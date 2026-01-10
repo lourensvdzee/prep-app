@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="64" fill="#1a1a2e"/>
+  <g transform="translate(80, 80)">
+    <!-- Box shape -->
+    <rect x="56" y="100" width="240" height="200" rx="16" fill="#16213e" stroke="#2a3a5a" stroke-width="8"/>
+    <rect x="56" y="80" width="240" height="40" rx="8" fill="#2a3a5a"/>
+    <!-- Status indicators -->
+    <circle cx="120" cy="180" r="24" fill="#22c55e"/>
+    <circle cx="176" cy="180" r="24" fill="#f59e0b"/>
+    <circle cx="232" cy="180" r="24" fill="#ef4444"/>
+    <!-- Lines representing items -->
+    <rect x="88" y="230" width="176" height="12" rx="6" fill="#2a3a5a"/>
+    <rect x="88" y="258" width="140" height="12" rx="6" fill="#2a3a5a"/>
+  </g>
+</svg>

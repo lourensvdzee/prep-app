@@ -3,7 +3,18 @@
     "allow": [
       "Bash(npm install)",
       "Bash(npm run build:*)",
-      "Bash(timeout 5 npm run dev)"
+      "Bash(timeout 5 npm run dev)",
+      "Bash(git commit:*)",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(where:*)",
+      "Bash(npm install:*)",
+      "Bash(vercel link:*)",
+      "Bash(vercel login:*)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout:*)",
+      "Bash(ping:*)"
     ]
   }
 }

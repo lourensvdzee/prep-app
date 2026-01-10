@@ -45,24 +45,52 @@ export function getCacheTimestamp(): string | null {
 }
 
 /**
+ * Fetch using JSONP (for Google Apps Script CORS workaround)
+ */
+function fetchJsonp(url: string): Promise<ApiResponse> {
+  return new Promise((resolve, reject) => {
+    const callbackName = 'jsonpCallback_' + Date.now()
+    const script = document.createElement('script')
+
+    // Set up the callback
+    ;(window as unknown as Record<string, unknown>)[callbackName] = (data: ApiResponse) => {
+      delete (window as unknown as Record<string, unknown>)[callbackName]
+      document.body.removeChild(script)
+      resolve(data)
+    }
+
+    // Set up error handling
+    script.onerror = () => {
+      delete (window as unknown as Record<string, unknown>)[callbackName]
+      document.body.removeChild(script)
+      reject(new Error('JSONP request failed'))
+    }
+
+    // Add script to page
+    script.src = `${url}&callback=${callbackName}`
+    document.body.appendChild(script)
+
+    // Timeout after 15 seconds
+    setTimeout(() => {
+      if ((window as unknown as Record<string, unknown>)[callbackName]) {
+        delete (window as unknown as Record<string, unknown>)[callbackName]
+        if (script.parentNode) {
+          document.body.removeChild(script)
+        }
+        reject(new Error('Request timeout'))
+      }
+    }, 15000)
+  })
+}
+
+/**
  * Fetch all inventory items from Google Sheets
  * Returns cached data if offline
  */
 export async function fetchInventory(): Promise<ApiResponse> {
-  // Try to fetch from API
+  // Try to fetch from API using JSONP (avoids CORS issues with Google Apps Script)
   try {
-    const response = await fetch(`${API_URL}?action=getAll`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status}`)
-    }
-
-    const data: ApiResponse = await response.json()
+    const data = await fetchJsonp(`${API_URL}?action=getAll`)
 
     if (data.error) {
       throw new Error(data.error)

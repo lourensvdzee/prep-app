@@ -12,7 +12,7 @@ This guide explains how to set up push notifications for the Prep App using FCM 
 | 4 | Create Service Account | DONE |
 | 5 | Configure Google Apps Script | DONE |
 | 6 | Deploy & Test | DONE |
-| 7 | Set Up Daily Trigger | **TODO** |
+| 7 | Set Up Daily Trigger | DONE |
 
 ---
 
@@ -126,7 +126,7 @@ function setupServiceAccountCredentials() {
 
 ---
 
-## TODO - Step 7: Set Up Daily Trigger
+## DONE - Step 7: Set Up Daily Trigger
 
 1. In Apps Script, run `createDailyNotificationTrigger()`
 2. This creates a trigger that runs `checkAndSendNotifications()` every day at 8:00 AM

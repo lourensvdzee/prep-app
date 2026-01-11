@@ -203,6 +203,17 @@ function addItem(item) {
       const shopIdx = findColumnIndex(headers, [shopName]);
       if (shopIdx >= 0) {
         newRow[shopIdx] = item.shops[shopName] || '';
+      } else if (item.shops[shopName]) {
+        // Shop column doesn't exist and has a value - add column first
+        const newColIndex = sheet.getLastColumn() + 1;
+        const displayName = shopName.charAt(0).toUpperCase() + shopName.slice(1);
+        sheet.getRange(1, newColIndex).setValue(displayName);
+        // Extend newRow array and set value
+        while (newRow.length < newColIndex) {
+          newRow.push('');
+        }
+        newRow[newColIndex - 1] = item.shops[shopName];
+        headers.push(displayName);
       }
     }
   }
@@ -241,15 +252,22 @@ function updateItem(rowIndex, item) {
 
   // Handle shop columns
   if (item.shops) {
+    // Re-read headers after potential updates
+    const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+
     for (const shopName in item.shops) {
-      const shopIdx = findColumnIndex(headers, [shopName]);
+      const shopIdx = findColumnIndex(currentHeaders, [shopName]);
       if (shopIdx >= 0) {
         sheet.getRange(rowIndex, shopIdx + 1).setValue(item.shops[shopName] || '');
       } else {
-        // Shop column doesn't exist, create it
+        // Shop column doesn't exist, create it at the end
         const newColIndex = sheet.getLastColumn() + 1;
-        sheet.getRange(1, newColIndex).setValue(shopName);
+        // Capitalize first letter for display
+        const displayName = shopName.charAt(0).toUpperCase() + shopName.slice(1);
+        sheet.getRange(1, newColIndex).setValue(displayName);
         sheet.getRange(rowIndex, newColIndex).setValue(item.shops[shopName] || '');
+        // Update currentHeaders for subsequent shops
+        currentHeaders.push(displayName);
       }
     }
   }

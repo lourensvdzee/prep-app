@@ -7,13 +7,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.svg'],
+      includeAssets: ['favicon.svg', 'apple-touch-icon.jpg', 'icon.svg'],
       manifest: {
         name: 'Prep App',
         short_name: 'Prep',
         description: 'Personal prep inventory tracker',
-        theme_color: '#1a1a2e',
-        background_color: '#1a1a2e',
+        theme_color: '#2d3a3a',
+        background_color: '#2d3a3a',
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',
@@ -22,7 +22,14 @@ export default defineConfig({
           {
             src: 'icon.svg',
             sizes: 'any',
-            type: 'image/svg+xml'
+            type: 'image/svg+xml',
+            purpose: 'any'
+          },
+          {
+            src: 'apple-touch-icon.jpg',
+            sizes: '180x180',
+            type: 'image/jpeg',
+            purpose: 'any'
           }
         ]
       },

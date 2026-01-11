@@ -7,7 +7,13 @@ interface SummaryProps {
 function scrollToSection(status: ItemStatus) {
   const element = document.getElementById(`section-${status}`)
   if (element) {
-    element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    // Get the header height dynamically
+    const header = document.querySelector('.header') as HTMLElement
+    const headerHeight = header ? header.offsetHeight : 0
+    const extraPadding = 16
+    const elementPosition = element.getBoundingClientRect().top
+    const offsetPosition = elementPosition + window.scrollY - headerHeight - extraPadding
+    window.scrollTo({ top: offsetPosition, behavior: 'instant' })
   }
 }
 

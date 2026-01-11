@@ -5,6 +5,8 @@ interface StatusSectionProps {
   status: ItemStatus
   items: InventoryItemWithStatus[]
   onItemClick: (item: InventoryItemWithStatus) => void
+  onScrollTop: () => void
+  showUpButton: boolean
 }
 
 const statusConfig: Record<ItemStatus, { title: string }> = {
@@ -14,7 +16,7 @@ const statusConfig: Record<ItemStatus, { title: string }> = {
   ok: { title: 'OK' }
 }
 
-export function StatusSection({ status, items, onItemClick }: StatusSectionProps) {
+export function StatusSection({ status, items, onItemClick, onScrollTop, showUpButton }: StatusSectionProps) {
   if (items.length === 0) return null
 
   const config = statusConfig[status]
@@ -22,9 +24,16 @@ export function StatusSection({ status, items, onItemClick }: StatusSectionProps
   return (
     <div className="status-section" id={`section-${status}`}>
       <div className="status-header">
-        <span className={`status-indicator ${status}`}></span>
-        <span className="status-title">{config.title}</span>
-        <span className="status-count">({items.length})</span>
+        <div className="status-header-left">
+          <span className={`status-indicator ${status}`}></span>
+          <span className="status-title">{config.title}</span>
+          <span className="status-count">({items.length})</span>
+        </div>
+        {showUpButton && (
+          <button className="scroll-top-btn" onClick={onScrollTop} aria-label="Scroll to top">
+            ↑
+          </button>
+        )}
       </div>
 
       {items.map((item) => (

@@ -4,6 +4,21 @@ import { ALERT_WINDOWS } from '../types'
 import { formatDateForInput, inputDateToDisplay, calculateAlertDate } from '../utils'
 import { ShopLogo } from './ShopLogo'
 
+// Available shops for the picker
+const AVAILABLE_SHOPS = [
+  { id: 'edeka', name: 'Edeka' },
+  { id: 'rewe', name: 'Rewe' },
+  { id: 'aldi', name: 'Aldi' },
+  { id: 'penny', name: 'Penny' },
+  { id: 'netto', name: 'Netto' },
+  { id: 'kaufland', name: 'Kaufland' },
+  { id: 'denns', name: "Denn's" },
+  { id: 'biocompany', name: 'Bio Company' },
+  { id: 'plus', name: 'Plus' },
+  { id: 'albert heijn', name: 'Albert Heijn' },
+  { id: 'jumbo', name: 'Jumbo' },
+]
+
 interface EditModalProps {
   item: InventoryItemWithStatus | null
   isNew?: boolean
@@ -13,7 +28,7 @@ interface EditModalProps {
   onClose: () => void
 }
 
-export function EditModal({ item, isNew = false, existingShops, onSave, onDelete, onClose }: EditModalProps) {
+export function EditModal({ item, isNew = false, onSave, onDelete, onClose }: EditModalProps) {
   const [name, setName] = useState('')
   const [amount, setAmount] = useState('')
   const [expirationDate, setExpirationDate] = useState('')
@@ -21,7 +36,6 @@ export function EditModal({ item, isNew = false, existingShops, onSave, onDelete
   const [alertWindow, setAlertWindow] = useState<string>('')
   const [inUse, setInUse] = useState(false)
   const [shops, setShops] = useState<Record<string, string>>({})
-  const [newShopName, setNewShopName] = useState('')
   const [showAddShop, setShowAddShop] = useState(false)
 
   useEffect(() => {
@@ -31,22 +45,24 @@ export function EditModal({ item, isNew = false, existingShops, onSave, onDelete
       setExpirationDate(formatDateForInput(item.expirationDate))
       setAlertDate(formatDateForInput(item.alertDate))
       setInUse(item.inUse || false)
-      setShops({ ...item.shops })
+      // For existing items, only show shops that have a value
+      const shopsWithValues: Record<string, string> = {}
+      Object.entries(item.shops).forEach(([key, value]) => {
+        if (value && value.trim()) {
+          shopsWithValues[key] = value
+        }
+      })
+      setShops(shopsWithValues)
     } else {
-      // New item defaults
+      // New item defaults - empty, no shops
       setName('')
       setAmount('')
       setExpirationDate('')
       setAlertDate('')
       setInUse(false)
-      // Initialize with existing shop columns (empty values)
-      const emptyShops: Record<string, string> = {}
-      existingShops.forEach(shop => {
-        emptyShops[shop] = ''
-      })
-      setShops(emptyShops)
+      setShops({})
     }
-  }, [item, existingShops])
+  }, [item])
 
   const handleAlertWindowChange = (windowValue: string) => {
     setAlertWindow(windowValue)
@@ -77,13 +93,19 @@ export function EditModal({ item, isNew = false, existingShops, onSave, onDelete
     setShops(prev => ({ ...prev, [shopName]: value }))
   }
 
-  const handleAddShop = () => {
-    if (newShopName.trim()) {
-      const shopKey = newShopName.trim().toLowerCase()
-      setShops(prev => ({ ...prev, [shopKey]: '' }))
-      setNewShopName('')
-      setShowAddShop(false)
+  const handleAddShop = (shopId: string) => {
+    if (!shops.hasOwnProperty(shopId)) {
+      setShops(prev => ({ ...prev, [shopId]: '' }))
     }
+    setShowAddShop(false)
+  }
+
+  const handleRemoveShop = (shopId: string) => {
+    setShops(prev => {
+      const newShops = { ...prev }
+      delete newShops[shopId]
+      return newShops
+    })
   }
 
   const handleSave = () => {
@@ -108,6 +130,9 @@ export function EditModal({ item, isNew = false, existingShops, onSave, onDelete
       onDelete(item.rowIndex)
     }
   }
+
+  // Get shops that aren't already added
+  const availableToAdd = AVAILABLE_SHOPS.filter(shop => !shops.hasOwnProperty(shop.id))
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -186,23 +211,48 @@ export function EditModal({ item, isNew = false, existingShops, onSave, onDelete
               <button
                 type="button"
                 className="btn-small"
-                onClick={() => setShowAddShop(true)}
+                onClick={() => setShowAddShop(!showAddShop)}
               >
                 + Add Shop
               </button>
             </div>
 
             {showAddShop && (
-              <div className="form-group add-shop-row">
-                <input
-                  type="text"
-                  value={newShopName}
-                  onChange={e => setNewShopName(e.target.value)}
-                  placeholder="Shop name"
-                  autoFocus
-                />
-                <button type="button" className="btn-small" onClick={handleAddShop}>Add</button>
-                <button type="button" className="btn-small btn-cancel" onClick={() => setShowAddShop(false)}>Cancel</button>
+              <div className="shop-picker">
+                <div className="shop-picker-grid">
+                  {availableToAdd.map(shop => (
+                    <button
+                      key={shop.id}
+                      type="button"
+                      className="shop-picker-item"
+                      onClick={() => handleAddShop(shop.id)}
+                    >
+                      <ShopLogo shop={shop.id} size={32} />
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="shop-picker-item shop-picker-other"
+                    onClick={() => {
+                      const shopName = prompt('Enter shop name:')
+                      if (shopName && shopName.trim()) {
+                        const shopKey = shopName.trim().toLowerCase()
+                        if (!shops.hasOwnProperty(shopKey)) {
+                          setShops(prev => ({ ...prev, [shopKey]: '' }))
+                        }
+                        setShowAddShop(false)
+                      }
+                    }}
+                  >
+                    <span>Other</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {Object.keys(shops).length === 0 && !showAddShop && (
+              <div className="no-shops-message">
+                No shops added. Click "+ Add Shop" to add one.
               </div>
             )}
 
@@ -215,6 +265,14 @@ export function EditModal({ item, isNew = false, existingShops, onSave, onDelete
                   onChange={e => handleShopChange(shopName, e.target.value)}
                   placeholder="Price, quantity, notes..."
                 />
+                <button
+                  type="button"
+                  className="shop-remove-btn"
+                  onClick={() => handleRemoveShop(shopName)}
+                  aria-label="Remove shop"
+                >
+                  ×
+                </button>
               </div>
             ))}
           </div>

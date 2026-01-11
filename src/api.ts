@@ -133,8 +133,14 @@ export async function fetchInventory(): Promise<ApiResponse> {
  * Uses GET with JSONP to bypass CORS (data passed as URL parameter)
  */
 export async function addItem(item: Partial<InventoryItem>): Promise<WriteResponse> {
-  const payload = encodeURIComponent(JSON.stringify({ action: 'add', item }))
-  const data = await fetchJsonp<WriteResponse>(`${API_URL}?action=write&payload=${payload}`)
+  const payloadObj = { action: 'add', item }
+  console.log('addItem payload:', payloadObj)
+  const payload = encodeURIComponent(JSON.stringify(payloadObj))
+  console.log('addItem encoded:', payload)
+  const url = `${API_URL}?action=write&payload=${payload}`
+  console.log('addItem URL:', url)
+  const data = await fetchJsonp<WriteResponse>(url)
+  console.log('addItem response:', data)
 
   if (data.error) {
     throw new Error(data.error)
@@ -151,8 +157,13 @@ export async function updateItem(
   rowIndex: number,
   item: Partial<InventoryItem>
 ): Promise<WriteResponse> {
-  const payload = encodeURIComponent(JSON.stringify({ action: 'update', rowIndex, item }))
-  const data = await fetchJsonp<WriteResponse>(`${API_URL}?action=write&payload=${payload}`)
+  const payloadObj = { action: 'update', rowIndex, item }
+  console.log('updateItem payload:', payloadObj)
+  const payload = encodeURIComponent(JSON.stringify(payloadObj))
+  const url = `${API_URL}?action=write&payload=${payload}`
+  console.log('updateItem URL:', url)
+  const data = await fetchJsonp<WriteResponse>(url)
+  console.log('updateItem response:', data)
 
   if (data.error) {
     throw new Error(data.error)

@@ -65,10 +65,27 @@ body {
   margin-bottom: 16px;
 }
 
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
 .header h1 {
   font-size: 1.5rem;
   font-weight: 600;
-  margin-bottom: 8px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-updated {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
 }
 
 .header-meta {
@@ -153,9 +170,33 @@ body {
 .status-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
   margin-bottom: 12px;
   padding: 8px 0;
+}
+
+.status-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scroll-top-btn {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.scroll-top-btn:active {
+  background: var(--color-surface-hover);
 }
 
 .status-indicator {
@@ -653,4 +694,116 @@ body {
 
 .btn-cancel {
   color: var(--color-text-muted);
+}
+
+/* Floating Action Button */
+.fab {
+  position: fixed;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  border: none;
+  color: white;
+  font-size: 2rem;
+  font-weight: 300;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.fab:active {
+  transform: scale(0.95);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: max(100px, calc(env(safe-area-inset-bottom) + 80px));
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-ok);
+  color: white;
+  padding: 12px 24px;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 200;
+  animation: toastIn 0.3s ease-out;
+  font-weight: 500;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Shop Picker */
+.shop-picker {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+}
+
+.shop-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.shop-picker-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.shop-picker-item:hover,
+.shop-picker-item:active {
+  border-color: var(--color-primary);
+}
+
+.shop-picker-other {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.shop-remove-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  flex-shrink: 0;
+}
+
+.shop-remove-btn:hover,
+.shop-remove-btn:active {
+  color: var(--color-expired);
+}
+
+.no-shops-message {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  font-style: italic;
+  padding: 12px 0;
 }

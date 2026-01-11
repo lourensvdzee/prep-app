@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { fetchInventory, getCacheTimestamp, updateItem, addItem, deleteItem } from './api'
 import { enrichItemsWithStatus, groupByStatus, filterItems } from './utils'
 import { StatusSection } from './components/StatusSection'
 import { Summary } from './components/Summary'
 import { EditModal } from './components/EditModal'
+import { Toast } from './components/Toast'
 import type { InventoryItemWithStatus, ItemStatus, InventoryItem } from './types'
 
 function App() {
@@ -22,6 +23,34 @@ function App() {
   const [editingItem, setEditingItem] = useState<InventoryItemWithStatus | null>(null)
   const [isAddingNew, setIsAddingNew] = useState(false)
   const [shopColumns, setShopColumns] = useState<string[]>(['edeka', 'denns', 'rewe'])
+  const [toast, setToast] = useState<string | null>(null)
+  const [isAtTop, setIsAtTop] = useState(true)
+  const scrollTimeoutRef = useRef<number | null>(null)
+
+  // Track scroll position to show/hide up button
+  useEffect(() => {
+    const handleScroll = () => {
+      if (scrollTimeoutRef.current) {
+        window.clearTimeout(scrollTimeoutRef.current)
+      }
+      scrollTimeoutRef.current = window.setTimeout(() => {
+        setIsAtTop(window.scrollY < 100)
+      }, 50)
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      if (scrollTimeoutRef.current) {
+        window.clearTimeout(scrollTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const showToast = (message: string) => {
+    setToast(message)
+    setTimeout(() => setToast(null), 2000)
+  }
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -116,8 +145,10 @@ function App() {
     try {
       if (isNew) {
         await addItem(itemData)
+        showToast('Item added!')
       } else if (itemData.rowIndex) {
         await updateItem(itemData.rowIndex, itemData)
+        showToast('Saved!')
       }
       setEditingItem(null)
       setIsAddingNew(false)
@@ -131,6 +162,7 @@ function App() {
     try {
       await deleteItem(rowIndex)
       setEditingItem(null)
+      showToast('Item deleted')
       loadData()
     } catch (err) {
       alert('Failed to delete: ' + (err instanceof Error ? err.message : 'Unknown error'))
@@ -142,26 +174,34 @@ function App() {
     setIsAddingNew(false)
   }
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }
+
   const totalFiltered = filteredGroups.inuse.length + filteredGroups.expired.length +
     filteredGroups.expiring.length + filteredGroups.ok.length
 
   return (
     <div className="app">
       <header className="header">
-        <h1>Prep App</h1>
+        <div className="header-top">
+          <h1>Prep App</h1>
+          <div className="header-right">
+            {formatLastUpdated() && (
+              <span className="header-updated">{formatLastUpdated()}</span>
+            )}
+            <button
+              className="refresh-btn"
+              onClick={loadData}
+              disabled={loading}
+            >
+              {loading ? '...' : '↻'}
+            </button>
+          </div>
+        </div>
         <div className="header-meta">
           <span>{items.length} items</span>
-          {formatLastUpdated() && (
-            <span>Updated: {formatLastUpdated()}</span>
-          )}
           {isOffline && <span className="offline-badge">Offline</span>}
-          <button
-            className="refresh-btn"
-            onClick={loadData}
-            disabled={loading}
-          >
-            {loading ? '...' : '↻'}
-          </button>
         </div>
       </header>
 
@@ -177,10 +217,6 @@ function App() {
           <button className="search-clear" onClick={() => setSearchQuery('')}>×</button>
         )}
       </div>
-
-      <button className="add-btn" onClick={handleAddNew}>
-        + Add Item
-      </button>
 
       {loading && items.length === 0 && (
         <div className="loading">
@@ -206,10 +242,10 @@ function App() {
             </div>
           )}
 
-          <StatusSection status="inuse" items={filteredGroups.inuse} onItemClick={handleItemClick} />
-          <StatusSection status="expired" items={filteredGroups.expired} onItemClick={handleItemClick} />
-          <StatusSection status="expiring" items={filteredGroups.expiring} onItemClick={handleItemClick} />
-          <StatusSection status="ok" items={filteredGroups.ok} onItemClick={handleItemClick} />
+          <StatusSection status="inuse" items={filteredGroups.inuse} onItemClick={handleItemClick} onScrollTop={scrollToTop} showUpButton={!isAtTop} />
+          <StatusSection status="expired" items={filteredGroups.expired} onItemClick={handleItemClick} onScrollTop={scrollToTop} showUpButton={!isAtTop} />
+          <StatusSection status="expiring" items={filteredGroups.expiring} onItemClick={handleItemClick} onScrollTop={scrollToTop} showUpButton={!isAtTop} />
+          <StatusSection status="ok" items={filteredGroups.ok} onItemClick={handleItemClick} onScrollTop={scrollToTop} showUpButton={!isAtTop} />
         </>
       )}
 
@@ -219,6 +255,10 @@ function App() {
           <button className="btn btn-primary" onClick={handleAddNew}>Add your first item</button>
         </div>
       )}
+
+      <button className="fab" onClick={handleAddNew} aria-label="Add item">
+        +
+      </button>
 
       {(editingItem || isAddingNew) && (
         <EditModal
@@ -230,6 +270,8 @@ function App() {
           onClose={handleCloseModal}
         />
       )}
+
+      {toast && <Toast message={toast} />}
     </div>
   )
 }

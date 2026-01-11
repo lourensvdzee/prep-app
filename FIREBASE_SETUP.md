@@ -2,79 +2,89 @@
 
 This guide explains how to set up push notifications for the Prep App using FCM HTTP v1 API.
 
-## Step 1: Create a Firebase Project (DONE)
+## Progress Overview
 
-1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Click "Add project" or "Create a project"
-3. Name it "prep-app" (or any name you prefer)
-4. Disable Google Analytics if you don't need it
-5. Click "Create project"
+| Step | Description | Status |
+|------|-------------|--------|
+| 1 | Create Firebase Project | DONE |
+| 2 | Register Web App | DONE |
+| 3 | Enable Cloud Messaging & VAPID Key | DONE |
+| 4 | Create Service Account | **TODO** |
+| 5 | Configure Google Apps Script | **TODO** |
+| 6 | Deploy & Test | **TODO** |
+| 7 | Set Up Daily Trigger | **TODO** |
 
-## Step 2: Register Web App (DONE)
+---
 
-1. In your Firebase project, click the web icon (</>) to add a web app
-2. Give it a nickname like "Prep App Web"
-3. Check "Also set up Firebase Hosting" if you want (optional)
-4. Click "Register app"
-5. Copy the firebaseConfig object - you'll need it
+## DONE - Step 1: Create a Firebase Project
 
-## Step 3: Enable Cloud Messaging (DONE)
+Project created: `prep-app-93f35`
 
-1. Go to Project Settings (gear icon) → Cloud Messaging
-2. Under "Web Push certificates", click "Generate key pair"
-3. Copy the "Key pair" (VAPID key) - you'll need this
+## DONE - Step 2: Register Web App
 
-## Step 4: Create Service Account for FCM v1 API
+Web app registered with config:
+- apiKey: `AIzaSyCYbH8ZpeXCts1_ma_ADkqCLDPaHbv3wnQ`
+- authDomain: `prep-app-93f35.firebaseapp.com`
+- projectId: `prep-app-93f35`
+- storageBucket: `prep-app-93f35.firebasestorage.app`
+- messagingSenderId: `970268525390`
+- appId: `1:970268525390:web:48baf7b26250bbb55dd41f`
+
+## DONE - Step 3: Enable Cloud Messaging
+
+VAPID Key generated: `BGfXx_LkWeHFoBox-my8d5TUMNvP-rPlZhgzSc8rBf5yZBNn0zjZBiyZ7gEE-VV1KzyCRFw43kSSrImOBjKGiSA`
+
+---
+
+## TODO - Step 4: Create Service Account for FCM v1 API
 
 The Legacy Cloud Messaging API is deprecated. You need a service account for the new HTTP v1 API.
 
-### 4a: Link Firebase to Google Cloud (if not already)
+### 4a: Enable Firebase Cloud Messaging API
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Select your project "prep-app-93f35" from the dropdown
-3. If you don't see it, the Firebase project should auto-create a GCP project
+2. Select your project **"prep-app-93f35"** from the dropdown at the top
+3. Go to **"APIs & Services"** → **"Enabled APIs & services"**
+4. Click **"+ ENABLE APIS AND SERVICES"**
+5. Search for **"Firebase Cloud Messaging API"** (NOT the legacy one)
+6. Click on it and click **"Enable"**
 
-### 4b: Enable Firebase Cloud Messaging API
+### 4b: Create Service Account
 
-1. In Google Cloud Console, go to "APIs & Services" → "Enabled APIs & services"
-2. Click "+ ENABLE APIS AND SERVICES"
-3. Search for "Firebase Cloud Messaging API" (NOT the legacy one)
-4. Click on it and click "Enable"
-
-### 4c: Create Service Account
-
-1. In Google Cloud Console, go to "IAM & Admin" → "Service Accounts"
-2. Click "CREATE SERVICE ACCOUNT"
+1. In Google Cloud Console, go to **"IAM & Admin"** → **"Service Accounts"**
+2. Click **"CREATE SERVICE ACCOUNT"**
 3. Fill in:
    - Service account name: `fcm-sender`
    - Service account ID: `fcm-sender` (auto-fills)
    - Description: `Service account for sending FCM push notifications`
-4. Click "CREATE AND CONTINUE"
+4. Click **"CREATE AND CONTINUE"**
 5. Under "Grant this service account access to project", add role:
    - Click "Select a role"
-   - Search for and select: "Firebase Cloud Messaging API Admin"
-6. Click "CONTINUE"
-7. Click "DONE"
+   - Search for and select: **"Firebase Cloud Messaging API Admin"**
+6. Click **"CONTINUE"**
+7. Click **"DONE"**
 
-### 4d: Create and Download Key
+### 4c: Create and Download Key
 
-1. Click on the service account you just created (fcm-sender@...)
-2. Go to the "KEYS" tab
-3. Click "ADD KEY" → "Create new key"
-4. Select "JSON" format
-5. Click "CREATE"
+1. Click on the service account you just created (`fcm-sender@prep-app-93f35.iam.gserviceaccount.com`)
+2. Go to the **"KEYS"** tab
+3. Click **"ADD KEY"** → **"Create new key"**
+4. Select **"JSON"** format
+5. Click **"CREATE"**
 6. A JSON file will download - keep this secure!
 
-## Step 5: Configure Google Apps Script
+---
+
+## TODO - Step 5: Configure Google Apps Script
 
 1. Open the downloaded JSON key file in a text editor
 2. Find these two values:
    - `client_email` (looks like `fcm-sender@prep-app-93f35.iam.gserviceaccount.com`)
    - `private_key` (long string starting with `-----BEGIN PRIVATE KEY-----`)
 
-3. Go to your Google Apps Script project
-4. Find the `setupServiceAccountCredentials()` function
-5. Replace the placeholder values:
+3. Go to your [Google Apps Script project](https://script.google.com)
+4. Find the `setupServiceAccountCredentials()` function (near the bottom)
+5. Replace the placeholder values with YOUR values from the JSON file:
 
 ```javascript
 function setupServiceAccountCredentials() {
@@ -94,43 +104,35 @@ function setupServiceAccountCredentials() {
 }
 ```
 
-6. Run the function ONCE by clicking the play button
+6. **Run the function ONCE** by selecting it and clicking the play button
 7. Authorize when prompted
 8. Check the execution log - should say "Service account credentials saved!"
 
-## Step 6: Verify Setup and Deploy
+---
+
+## TODO - Step 6: Verify Setup and Deploy
 
 1. In Apps Script, run `verifyCredentials()` to confirm credentials are saved
-2. Run `testPushNotification()` to send a test notification (after enabling notifications in the app)
-3. Deploy a new version:
-   - Click "Deploy" → "New deployment"
-   - Select type: "Web app"
-   - Execute as: "Me"
-   - Who has access: "Anyone"
-   - Click "Deploy"
-   - Copy the new URL and update your `.env` file if needed
+2. Deploy a new version:
+   - Click **"Deploy"** → **"New deployment"**
+   - Select type: **"Web app"**
+   - Execute as: **"Me"**
+   - Who has access: **"Anyone"**
+   - Click **"Deploy"**
+   - Copy the new URL if it changed
 
-## Step 7: Set Up Daily Trigger
+3. In the app, tap the bell icon and enable notifications
+4. Back in Apps Script, run `testPushNotification()` to send a test notification
+
+---
+
+## TODO - Step 7: Set Up Daily Trigger
 
 1. In Apps Script, run `createDailyNotificationTrigger()`
 2. This creates a trigger that runs `checkAndSendNotifications()` every day at 8:00 AM
-3. Verify by going to "Triggers" (clock icon) in the left sidebar
+3. Verify by going to **"Triggers"** (clock icon) in the left sidebar
 
-## Step 8: Update .env file (DONE)
-
-Your `.env` file should have:
-
-```
-VITE_GOOGLE_SCRIPT_URL=your-apps-script-url
-
-VITE_FIREBASE_API_KEY=AIzaSyCYbH8ZpeXCts1_ma_ADkqCLDPaHbv3wnQ
-VITE_FIREBASE_AUTH_DOMAIN=prep-app-93f35.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=prep-app-93f35
-VITE_FIREBASE_STORAGE_BUCKET=prep-app-93f35.firebasestorage.app
-VITE_FIREBASE_MESSAGING_SENDER_ID=970268525390
-VITE_FIREBASE_APP_ID=1:970268525390:web:48baf7b26250bbb55dd41f
-VITE_FIREBASE_VAPID_KEY=BGfXx_LkWeHFoBox-my8d5TUMNvP-rPlZhgzSc8rBf5yZBNn0zjZBiyZ7gEE-VV1KzyCRFw43kSSrImOBjKGiSA
-```
+---
 
 ## iOS Specific Notes
 
@@ -149,11 +151,14 @@ Notifications are sent daily at 8:00 AM for:
 
 ## Troubleshooting
 
+### "Push notifications are not yet configured"
+Complete Steps 4-6 above to configure the service account.
+
 ### "Service account credentials not configured"
 Run `setupServiceAccountCredentials()` with the correct values from your JSON key file.
 
 ### "Firebase Cloud Messaging API has not been used in project"
-Enable the Firebase Cloud Messaging API in Google Cloud Console (step 4b).
+Enable the Firebase Cloud Messaging API in Google Cloud Console (step 4a).
 
 ### "Permission denied"
 Make sure the service account has the "Firebase Cloud Messaging API Admin" role.

@@ -172,6 +172,10 @@ function App() {
   }
 
   const handleSave = async (itemData: Partial<InventoryItem>, isNew: boolean) => {
+    // Close modal immediately so user sees loading overlay on the feed
+    setEditingItem(null)
+    setIsAddingNew(false)
+
     setSaving(true)
     setSavingMessage(isNew ? 'Adding...' : 'Saving...')
 
@@ -183,8 +187,6 @@ function App() {
         await updateItem(itemData.rowIndex, itemData)
         showToast('Saved!')
       }
-      setEditingItem(null)
-      setIsAddingNew(false)
       loadData()
     } catch (err) {
       alert('Failed to save: ' + (err instanceof Error ? err.message : 'Unknown error'))
@@ -194,12 +196,15 @@ function App() {
   }
 
   const handleDelete = async (rowIndex: number) => {
+    // Close modal immediately so user sees loading overlay on the feed
+    setEditingItem(null)
+    setIsAddingNew(false)
+
     setSaving(true)
     setSavingMessage('Deleting...')
 
     try {
       await deleteItem(rowIndex)
-      setEditingItem(null)
       showToast('Item deleted')
       loadData()
     } catch (err) {

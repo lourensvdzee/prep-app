@@ -41,6 +41,9 @@ function doGet(e) {
           case 'addShopColumn':
             result = addShopColumn(payload.shopName);
             break;
+          case 'registerToken':
+            result = registerToken(payload.token);
+            break;
           default:
             result = { success: false, error: 'Unknown write action: ' + payload.action };
         }
@@ -324,4 +327,236 @@ function formatDate(value) {
 function testGetAll() {
   const result = getAllItems();
   Logger.log(JSON.stringify(result, null, 2));
+}
+
+// ============================================
+// PUSH NOTIFICATIONS - Firebase Cloud Messaging
+// ============================================
+
+const TOKENS_SHEET_NAME = 'FCM_Tokens';
+const NOTIFICATIONS_SHEET_NAME = 'Notifications';
+
+// Get or create the FCM tokens sheet
+function getTokensSheet() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName(TOKENS_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(TOKENS_SHEET_NAME);
+    sheet.appendRow(['Token', 'CreatedAt', 'LastUsed']);
+  }
+  return sheet;
+}
+
+// Register FCM token (called from the app)
+function registerToken(token) {
+  const sheet = getTokensSheet();
+  const data = sheet.getDataRange().getValues();
+
+  // Check if token already exists
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === token) {
+      // Update LastUsed
+      sheet.getRange(i + 1, 3).setValue(new Date().toISOString());
+      return { success: true, message: 'Token updated' };
+    }
+  }
+
+  // Add new token
+  sheet.appendRow([token, new Date().toISOString(), new Date().toISOString()]);
+  return { success: true, message: 'Token registered' };
+}
+
+// Get all registered FCM tokens
+function getAllTokens() {
+  const sheet = getTokensSheet();
+  const data = sheet.getDataRange().getValues();
+  const tokens = [];
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0]) {
+      tokens.push(data[i][0]);
+    }
+  }
+  return tokens;
+}
+
+// Send push notification via Firebase Cloud Messaging
+function sendPushNotification(title, body, data) {
+  const serverKey = PropertiesService.getScriptProperties().getProperty('FCM_SERVER_KEY');
+  if (!serverKey) {
+    Logger.log('FCM_SERVER_KEY not configured');
+    return { success: false, error: 'FCM_SERVER_KEY not configured' };
+  }
+
+  const tokens = getAllTokens();
+  if (tokens.length === 0) {
+    Logger.log('No FCM tokens registered');
+    return { success: false, error: 'No tokens registered' };
+  }
+
+  const results = [];
+
+  for (const token of tokens) {
+    const payload = {
+      to: token,
+      notification: {
+        title: title,
+        body: body,
+        icon: '/apple-touch-icon.jpg',
+        click_action: '/'
+      },
+      data: data || {}
+    };
+
+    const options = {
+      method: 'post',
+      contentType: 'application/json',
+      headers: {
+        'Authorization': 'key=' + serverKey
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+
+    try {
+      const response = UrlFetchApp.fetch('https://fcm.googleapis.com/fcm/send', options);
+      const result = JSON.parse(response.getContentText());
+      results.push({ token: token.substring(0, 20) + '...', result: result });
+
+      // Remove invalid tokens
+      if (result.failure === 1 && result.results && result.results[0].error === 'NotRegistered') {
+        removeToken(token);
+      }
+    } catch (error) {
+      Logger.log('Error sending notification: ' + error.message);
+      results.push({ token: token.substring(0, 20) + '...', error: error.message });
+    }
+  }
+
+  return { success: true, results: results };
+}
+
+// Remove invalid token
+function removeToken(token) {
+  const sheet = getTokensSheet();
+  const data = sheet.getDataRange().getValues();
+
+  for (let i = data.length - 1; i >= 1; i--) {
+    if (data[i][0] === token) {
+      sheet.deleteRow(i + 1);
+      break;
+    }
+  }
+}
+
+// Check items and send notifications - Run this daily at 8:00 AM
+function checkAndSendNotifications() {
+  const items = getAllItems().items;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const notifications = [];
+
+  for (const item of items) {
+    if (item.inUse) continue; // Skip items in use
+
+    const expDate = parseDate(item.expirationDate);
+    const alertDate = parseDate(item.alertDate);
+
+    if (!expDate) continue;
+
+    const daysUntilExpiration = Math.floor((expDate - today) / (1000 * 60 * 60 * 24));
+    const daysUntilAlert = alertDate ? Math.floor((alertDate - today) / (1000 * 60 * 60 * 24)) : null;
+
+    // Check notification conditions
+    if (daysUntilExpiration === 0) {
+      // Expires today!
+      notifications.push({
+        title: 'Expiring Today!',
+        body: item.name + ' expires TODAY',
+        itemId: item.rowIndex
+      });
+    } else if (daysUntilExpiration === 7) {
+      // 1 week before expiration
+      notifications.push({
+        title: 'Expiring in 1 Week',
+        body: item.name + ' expires in 7 days',
+        itemId: item.rowIndex
+      });
+    } else if (daysUntilExpiration === 30) {
+      // 1 month before expiration (only if alert is at least 1 month before)
+      if (daysUntilAlert === null || daysUntilAlert >= 30) {
+        notifications.push({
+          title: 'Expiring in 1 Month',
+          body: item.name + ' expires in 30 days',
+          itemId: item.rowIndex
+        });
+      }
+    } else if (daysUntilAlert !== null && daysUntilAlert === 0) {
+      // Alert date is today
+      notifications.push({
+        title: 'Alert: ' + item.name,
+        body: 'Time to check on ' + item.name + ' (expires ' + item.expirationDate + ')',
+        itemId: item.rowIndex
+      });
+    }
+  }
+
+  // Send all notifications
+  for (const notif of notifications) {
+    sendPushNotification(notif.title, notif.body, { itemId: String(notif.itemId) });
+    Logger.log('Sent notification: ' + notif.title + ' - ' + notif.body);
+  }
+
+  return { sent: notifications.length, notifications: notifications };
+}
+
+// Parse date string (DD.MM.YYYY) to Date object
+function parseDate(dateStr) {
+  if (!dateStr) return null;
+  const parts = dateStr.split('.');
+  if (parts.length !== 3) return null;
+  const day = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const year = parseInt(parts[2], 10);
+  const date = new Date(year, month, day);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+// Create a time-based trigger to run notifications daily at 8 AM
+function createDailyNotificationTrigger() {
+  // Delete existing triggers for this function
+  const triggers = ScriptApp.getProjectTriggers();
+  for (const trigger of triggers) {
+    if (trigger.getHandlerFunction() === 'checkAndSendNotifications') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  }
+
+  // Create new daily trigger at 8 AM
+  ScriptApp.newTrigger('checkAndSendNotifications')
+    .timeBased()
+    .atHour(8)
+    .everyDays(1)
+    .create();
+
+  return { success: true, message: 'Daily notification trigger created for 8:00 AM' };
+}
+
+// Test function to manually send a test notification
+function testPushNotification() {
+  const result = sendPushNotification(
+    'Test Notification',
+    'This is a test notification from Prep App',
+    { test: 'true' }
+  );
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
+}
+
+// Test function to check what notifications would be sent
+function testCheckNotifications() {
+  const result = checkAndSendNotifications();
+  Logger.log(JSON.stringify(result, null, 2));
+  return result;
 }

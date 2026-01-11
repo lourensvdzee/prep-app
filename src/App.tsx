@@ -5,6 +5,9 @@ import { StatusSection } from './components/StatusSection'
 import { Summary } from './components/Summary'
 import { EditModal } from './components/EditModal'
 import { Toast } from './components/Toast'
+import { LoadingOverlay } from './components/LoadingOverlay'
+import { NotificationSettings } from './components/NotificationSettings'
+import { hasPendingChanges, syncPendingChanges } from './syncService'
 import type { InventoryItemWithStatus, ItemStatus, InventoryItem } from './types'
 
 function App() {
@@ -16,8 +19,11 @@ function App() {
     ok: []
   })
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [savingMessage, setSavingMessage] = useState('Saving...')
   const [error, setError] = useState<string | null>(null)
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
+  const [isSyncing, setIsSyncing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [editingItem, setEditingItem] = useState<InventoryItemWithStatus | null>(null)
@@ -25,6 +31,7 @@ function App() {
   const [shopColumns, setShopColumns] = useState<string[]>(['edeka', 'denns', 'rewe'])
   const [toast, setToast] = useState<string | null>(null)
   const [isAtTop, setIsAtTop] = useState(true)
+  const [showNotificationSettings, setShowNotificationSettings] = useState(false)
   const scrollTimeoutRef = useRef<number | null>(null)
 
   // Track scroll position to show/hide up button
@@ -91,11 +98,31 @@ function App() {
     }
   }, [])
 
+  // Sync pending changes when coming online
+  const syncChanges = useCallback(async () => {
+    if (!hasPendingChanges() || !navigator.onLine) return
+
+    setIsSyncing(true)
+    try {
+      const result = await syncPendingChanges()
+      if (result.success > 0) {
+        showToast(`Synced ${result.success} change${result.success > 1 ? 's' : ''}`)
+        loadData()
+      }
+      if (result.failed > 0) {
+        showToast(`${result.failed} change${result.failed > 1 ? 's' : ''} failed to sync`)
+      }
+    } finally {
+      setIsSyncing(false)
+    }
+  }, [loadData])
+
   useEffect(() => {
     loadData()
 
     const handleOnline = () => {
       setIsOffline(false)
+      syncChanges()
       loadData()
     }
     const handleOffline = () => setIsOffline(true)
@@ -103,11 +130,14 @@ function App() {
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
 
+    // Try to sync on initial load
+    syncChanges()
+
     return () => {
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
     }
-  }, [loadData])
+  }, [loadData, syncChanges])
 
   // Filter items based on search
   const filteredGroups = useMemo(() => {
@@ -142,6 +172,9 @@ function App() {
   }
 
   const handleSave = async (itemData: Partial<InventoryItem>, isNew: boolean) => {
+    setSaving(true)
+    setSavingMessage(isNew ? 'Adding...' : 'Saving...')
+
     try {
       if (isNew) {
         await addItem(itemData)
@@ -155,10 +188,15 @@ function App() {
       loadData()
     } catch (err) {
       alert('Failed to save: ' + (err instanceof Error ? err.message : 'Unknown error'))
+    } finally {
+      setSaving(false)
     }
   }
 
   const handleDelete = async (rowIndex: number) => {
+    setSaving(true)
+    setSavingMessage('Deleting...')
+
     try {
       await deleteItem(rowIndex)
       setEditingItem(null)
@@ -166,6 +204,8 @@ function App() {
       loadData()
     } catch (err) {
       alert('Failed to delete: ' + (err instanceof Error ? err.message : 'Unknown error'))
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -191,6 +231,13 @@ function App() {
               <span className="header-updated">{formatLastUpdated()}</span>
             )}
             <button
+              className="settings-btn"
+              onClick={() => setShowNotificationSettings(true)}
+              aria-label="Notification settings"
+            >
+              🔔
+            </button>
+            <button
               className="refresh-btn"
               onClick={loadData}
               disabled={loading}
@@ -202,6 +249,7 @@ function App() {
         <div className="header-meta">
           <span>{items.length} items</span>
           {isOffline && <span className="offline-badge">Offline</span>}
+          {isSyncing && <span className="syncing-badge">Syncing</span>}
         </div>
       </header>
 
@@ -271,7 +319,12 @@ function App() {
         />
       )}
 
+      {saving && <LoadingOverlay message={savingMessage} />}
       {toast && <Toast message={toast} />}
+
+      {showNotificationSettings && (
+        <NotificationSettings onClose={() => setShowNotificationSettings(false)} />
+      )}
     </div>
   )
 }

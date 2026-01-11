@@ -9,9 +9,9 @@ This guide explains how to set up push notifications for the Prep App using FCM 
 | 1 | Create Firebase Project | DONE |
 | 2 | Register Web App | DONE |
 | 3 | Enable Cloud Messaging & VAPID Key | DONE |
-| 4 | Create Service Account | **TODO** |
-| 5 | Configure Google Apps Script | **TODO** |
-| 6 | Deploy & Test | **TODO** |
+| 4 | Create Service Account | DONE |
+| 5 | Configure Google Apps Script | DONE |
+| 6 | Deploy & Test | DONE |
 | 7 | Set Up Daily Trigger | **TODO** |
 
 ---
@@ -36,7 +36,7 @@ VAPID Key generated: `BGfXx_LkWeHFoBox-my8d5TUMNvP-rPlZhgzSc8rBf5yZBNn0zjZBiyZ7g
 
 ---
 
-## TODO - Step 4: Create Service Account for FCM v1 API
+## DONE - Step 4: Create Service Account for FCM v1 API
 
 The Legacy Cloud Messaging API is deprecated. You need a service account for the new HTTP v1 API.
 
@@ -75,7 +75,7 @@ The Legacy Cloud Messaging API is deprecated. You need a service account for the
 
 ---
 
-## TODO - Step 5: Configure Google Apps Script
+## DONE - Step 5: Configure Google Apps Script
 
 1. Open the downloaded JSON key file in a text editor
 2. Find these two values:
@@ -110,7 +110,7 @@ function setupServiceAccountCredentials() {
 
 ---
 
-## TODO - Step 6: Verify Setup and Deploy
+## DONE - Step 6: Verify Setup and Deploy
 
 1. In Apps Script, run `verifyCredentials()` to confirm credentials are saved
 2. Deploy a new version:

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { isFirebaseConfigured, requestNotificationPermission, saveTokenToBackend } from '../firebase'
+import { requestNotificationPermission, saveTokenToBackend } from '../firebase'
 
 interface NotificationSettingsProps {
   onClose: () => void
@@ -19,7 +19,15 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
     }
 
     setPermissionStatus(Notification.permission)
-    setIsConfigured(isFirebaseConfigured())
+
+    // Check Firebase config directly
+    const apiKey = import.meta.env.VITE_FIREBASE_API_KEY
+    const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID
+    const senderId = import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID
+    const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY
+    const configured = !!(apiKey && projectId && senderId && vapidKey)
+    console.log('Firebase config check:', { apiKey: !!apiKey, projectId: !!projectId, senderId: !!senderId, vapidKey: !!vapidKey, configured })
+    setIsConfigured(configured)
   }, [])
 
   const handleEnableNotifications = async () => {

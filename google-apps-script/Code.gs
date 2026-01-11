@@ -20,6 +20,31 @@ function doGet(e) {
       case 'getAll':
         result = getAllItems();
         break;
+      case 'write':
+        // Handle write operations via GET (JSONP workaround for CORS)
+        const payloadStr = e && e.parameter && e.parameter.payload;
+        if (!payloadStr) {
+          result = { success: false, error: 'No payload provided' };
+          break;
+        }
+        const payload = JSON.parse(decodeURIComponent(payloadStr));
+        switch (payload.action) {
+          case 'add':
+            result = addItem(payload.item);
+            break;
+          case 'update':
+            result = updateItem(payload.rowIndex, payload.item);
+            break;
+          case 'delete':
+            result = deleteItem(payload.rowIndex);
+            break;
+          case 'addShopColumn':
+            result = addShopColumn(payload.shopName);
+            break;
+          default:
+            result = { success: false, error: 'Unknown write action: ' + payload.action };
+        }
+        break;
       default:
         result = { error: 'Unknown action' };
     }

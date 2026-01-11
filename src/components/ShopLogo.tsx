@@ -3,102 +3,70 @@ interface ShopLogoProps {
   size?: number
 }
 
-const SHOP_COLORS: Record<string, string> = {
-  edeka: '#fff100',
-  denns: '#8bc34a',
-  rewe: '#cc0000',
-  aldi: '#00457c',
-  lidl: '#0050aa',
-  dm: '#008fd7',
-  rossmann: '#c8102e',
+// Mapping from shop names to their logo file paths
+const SHOP_LOGOS: Record<string, string> = {
+  'edeka': '/retailer-logos/logo_edeka.png',
+  'rewe': '/retailer-logos/rewe_logo.png',
+  'denns': '/retailer-logos/logo_denns.png',
+  "denn's": '/retailer-logos/logo_denns.png',
+  'aldi': '/retailer-logos/logo_aldi.png',
+  'penny': '/retailer-logos/penny_logo.svg',
+  'netto': '/retailer-logos/logo_netto.png',
+  'kaufland': '/retailer-logos/logo_kaufland.png',
+  'biocompany': '/retailer-logos/logo_biocompany.png',
+  'bio company': '/retailer-logos/logo_biocompany.png',
+  'plus': '/retailer-logos/logo_plus.png',
+  'albert heijn': '/retailer-logos/albert_heijn_logo.png',
+  'ah': '/retailer-logos/albert_heijn_logo.png',
+  'jumbo': '/retailer-logos/jumbo_logo.png',
 }
 
-const SHOP_BACKGROUNDS: Record<string, string> = {
-  edeka: '#1a428a',
-  denns: '#2e7d32',
-  rewe: '#ffffff',
-  aldi: '#ffffff',
-  lidl: '#fff100',
-  dm: '#ffffff',
-  rossmann: '#ffffff',
+// Fallback colors for generic logo
+const SHOP_COLORS: Record<string, { bg: string; text: string }> = {
+  lidl: { bg: '#0050aa', text: '#fff100' },
+  dm: { bg: '#008fd7', text: '#ffffff' },
+  rossmann: { bg: '#c8102e', text: '#ffffff' },
 }
 
 export function ShopLogo({ shop, size = 24 }: ShopLogoProps) {
   const shopLower = shop.toLowerCase()
-  const color = SHOP_COLORS[shopLower] || '#888'
-  const bg = SHOP_BACKGROUNDS[shopLower] || '#333'
-  const initial = shop.charAt(0).toUpperCase()
+  const logoPath = SHOP_LOGOS[shopLower]
 
-  // SVG logos for known shops
-  if (shopLower === 'edeka') {
+  // Use actual logo image if available
+  if (logoPath) {
     return (
-      <svg width={size} height={size} viewBox="0 0 32 32" style={{ borderRadius: 4 }}>
-        <rect width="32" height="32" fill="#1a428a" rx="4"/>
-        <text x="16" y="22" textAnchor="middle" fill="#fff100" fontSize="16" fontWeight="bold" fontFamily="Arial">E</text>
-      </svg>
+      <img
+        src={logoPath}
+        alt={shop}
+        width={size}
+        height={size}
+        style={{
+          borderRadius: 4,
+          objectFit: 'contain',
+          backgroundColor: '#fff'
+        }}
+      />
     )
   }
 
-  if (shopLower === 'denns' || shopLower === "denn's") {
+  // Fallback to SVG for shops with known colors
+  const colors = SHOP_COLORS[shopLower]
+  if (colors) {
+    const initial = shop.charAt(0).toUpperCase()
     return (
       <svg width={size} height={size} viewBox="0 0 32 32" style={{ borderRadius: 4 }}>
-        <rect width="32" height="32" fill="#2e7d32" rx="4"/>
-        <text x="16" y="22" textAnchor="middle" fill="#ffffff" fontSize="16" fontWeight="bold" fontFamily="Arial">D</text>
-      </svg>
-    )
-  }
-
-  if (shopLower === 'rewe') {
-    return (
-      <svg width={size} height={size} viewBox="0 0 32 32" style={{ borderRadius: 4 }}>
-        <rect width="32" height="32" fill="#cc0000" rx="4"/>
-        <text x="16" y="22" textAnchor="middle" fill="#ffffff" fontSize="16" fontWeight="bold" fontFamily="Arial">R</text>
-      </svg>
-    )
-  }
-
-  if (shopLower === 'aldi') {
-    return (
-      <svg width={size} height={size} viewBox="0 0 32 32" style={{ borderRadius: 4 }}>
-        <rect width="32" height="32" fill="#00457c" rx="4"/>
-        <text x="16" y="22" textAnchor="middle" fill="#ffffff" fontSize="16" fontWeight="bold" fontFamily="Arial">A</text>
-      </svg>
-    )
-  }
-
-  if (shopLower === 'lidl') {
-    return (
-      <svg width={size} height={size} viewBox="0 0 32 32" style={{ borderRadius: 4 }}>
-        <rect width="32" height="32" fill="#0050aa" rx="4"/>
-        <rect x="4" y="4" width="24" height="24" fill="#fff100" rx="2"/>
-        <text x="16" y="22" textAnchor="middle" fill="#0050aa" fontSize="14" fontWeight="bold" fontFamily="Arial">L</text>
-      </svg>
-    )
-  }
-
-  if (shopLower === 'dm') {
-    return (
-      <svg width={size} height={size} viewBox="0 0 32 32" style={{ borderRadius: 4 }}>
-        <rect width="32" height="32" fill="#008fd7" rx="4"/>
-        <text x="16" y="21" textAnchor="middle" fill="#ffffff" fontSize="12" fontWeight="bold" fontFamily="Arial">dm</text>
-      </svg>
-    )
-  }
-
-  if (shopLower === 'rossmann') {
-    return (
-      <svg width={size} height={size} viewBox="0 0 32 32" style={{ borderRadius: 4 }}>
-        <rect width="32" height="32" fill="#c8102e" rx="4"/>
-        <text x="16" y="22" textAnchor="middle" fill="#ffffff" fontSize="16" fontWeight="bold" fontFamily="Arial">R</text>
+        <rect width="32" height="32" fill={colors.bg} rx="4"/>
+        <text x="16" y="22" textAnchor="middle" fill={colors.text} fontSize="16" fontWeight="bold" fontFamily="Arial">{initial}</text>
       </svg>
     )
   }
 
   // Generic logo for unknown shops
+  const initial = shop.charAt(0).toUpperCase()
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" style={{ borderRadius: 4 }}>
-      <rect width="32" height="32" fill={bg} rx="4"/>
-      <text x="16" y="22" textAnchor="middle" fill={color} fontSize="16" fontWeight="bold" fontFamily="Arial">{initial}</text>
+      <rect width="32" height="32" fill="#333" rx="4"/>
+      <text x="16" y="22" textAnchor="middle" fill="#888" fontSize="16" fontWeight="bold" fontFamily="Arial">{initial}</text>
     </svg>
   )
 }

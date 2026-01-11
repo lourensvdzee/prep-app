@@ -10,6 +10,12 @@ interface CachedData {
   lastUpdated: string
 }
 
+interface WriteResponse {
+  success: boolean
+  message: string
+  error?: string
+}
+
 /**
  * Get cached data from localStorage
  */
@@ -47,27 +53,32 @@ export function getCacheTimestamp(): string | null {
 /**
  * Fetch using JSONP (for Google Apps Script CORS workaround)
  */
-function fetchJsonp(url: string): Promise<ApiResponse> {
+function fetchJsonp<T>(url: string): Promise<T> {
   return new Promise((resolve, reject) => {
-    const callbackName = 'jsonpCallback_' + Date.now()
+    const callbackName = 'jsonpCallback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
     const script = document.createElement('script')
 
     // Set up the callback
-    ;(window as unknown as Record<string, unknown>)[callbackName] = (data: ApiResponse) => {
+    ;(window as unknown as Record<string, unknown>)[callbackName] = (data: T) => {
       delete (window as unknown as Record<string, unknown>)[callbackName]
-      document.body.removeChild(script)
+      if (script.parentNode) {
+        document.body.removeChild(script)
+      }
       resolve(data)
     }
 
     // Set up error handling
     script.onerror = () => {
       delete (window as unknown as Record<string, unknown>)[callbackName]
-      document.body.removeChild(script)
+      if (script.parentNode) {
+        document.body.removeChild(script)
+      }
       reject(new Error('JSONP request failed'))
     }
 
     // Add script to page
-    script.src = `${url}&callback=${callbackName}`
+    const separator = url.includes('?') ? '&' : '?'
+    script.src = `${url}${separator}callback=${callbackName}`
     document.body.appendChild(script)
 
     // Timeout after 15 seconds
@@ -90,7 +101,7 @@ function fetchJsonp(url: string): Promise<ApiResponse> {
 export async function fetchInventory(): Promise<ApiResponse> {
   // Try to fetch from API using JSONP (avoids CORS issues with Google Apps Script)
   try {
-    const data = await fetchJsonp(`${API_URL}?action=getAll`)
+    const data = await fetchJsonp<ApiResponse>(`${API_URL}?action=getAll`)
 
     if (data.error) {
       throw new Error(data.error)
@@ -119,58 +130,48 @@ export async function fetchInventory(): Promise<ApiResponse> {
 
 /**
  * Add a new item to the inventory
+ * Uses GET with JSONP to bypass CORS (data passed as URL parameter)
  */
-export async function addItem(item: Partial<InventoryItem>): Promise<{ success: boolean; message: string }> {
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      action: 'add',
-      item
-    }),
-  })
+export async function addItem(item: Partial<InventoryItem>): Promise<WriteResponse> {
+  const payload = encodeURIComponent(JSON.stringify({ action: 'add', item }))
+  const data = await fetchJsonp<WriteResponse>(`${API_URL}?action=write&payload=${payload}`)
 
-  return response.json()
+  if (data.error) {
+    throw new Error(data.error)
+  }
+
+  return data
 }
 
 /**
  * Update an existing item
+ * Uses GET with JSONP to bypass CORS (data passed as URL parameter)
  */
 export async function updateItem(
   rowIndex: number,
   item: Partial<InventoryItem>
-): Promise<{ success: boolean; message: string }> {
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      action: 'update',
-      rowIndex,
-      item
-    }),
-  })
+): Promise<WriteResponse> {
+  const payload = encodeURIComponent(JSON.stringify({ action: 'update', rowIndex, item }))
+  const data = await fetchJsonp<WriteResponse>(`${API_URL}?action=write&payload=${payload}`)
 
-  return response.json()
+  if (data.error) {
+    throw new Error(data.error)
+  }
+
+  return data
 }
 
 /**
  * Delete an item
+ * Uses GET with JSONP to bypass CORS (data passed as URL parameter)
  */
-export async function deleteItem(rowIndex: number): Promise<{ success: boolean; message: string }> {
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      action: 'delete',
-      rowIndex
-    }),
-  })
+export async function deleteItem(rowIndex: number): Promise<WriteResponse> {
+  const payload = encodeURIComponent(JSON.stringify({ action: 'delete', rowIndex }))
+  const data = await fetchJsonp<WriteResponse>(`${API_URL}?action=write&payload=${payload}`)
 
-  return response.json()
+  if (data.error) {
+    throw new Error(data.error)
+  }
+
+  return data
 }

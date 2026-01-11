@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.jpg', 'icon.svg'],
+      includeAssets: ['favicon.jpg', 'apple-touch-icon.jpg', 'icon.svg'],
       manifest: {
         name: 'Prep App',
         short_name: 'Prep',

@@ -4,25 +4,48 @@ interface SummaryProps {
   groups: Record<ItemStatus, InventoryItemWithStatus[]>
 }
 
+function scrollToSection(status: ItemStatus) {
+  const element = document.getElementById(`section-${status}`)
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
+
 export function Summary({ groups }: SummaryProps) {
   return (
     <div className="summary">
-      <div className="summary-card inuse">
+      <button
+        className="summary-card inuse"
+        onClick={() => scrollToSection('inuse')}
+        disabled={groups.inuse.length === 0}
+      >
         <div className="summary-count">{groups.inuse.length}</div>
         <div className="summary-label">In Use</div>
-      </div>
-      <div className="summary-card expired">
+      </button>
+      <button
+        className="summary-card expired"
+        onClick={() => scrollToSection('expired')}
+        disabled={groups.expired.length === 0}
+      >
         <div className="summary-count">{groups.expired.length}</div>
         <div className="summary-label">Expired</div>
-      </div>
-      <div className="summary-card expiring">
+      </button>
+      <button
+        className="summary-card expiring"
+        onClick={() => scrollToSection('expiring')}
+        disabled={groups.expiring.length === 0}
+      >
         <div className="summary-count">{groups.expiring.length}</div>
         <div className="summary-label">Expiring</div>
-      </div>
-      <div className="summary-card ok">
+      </button>
+      <button
+        className="summary-card ok"
+        onClick={() => scrollToSection('ok')}
+        disabled={groups.ok.length === 0}
+      >
         <div className="summary-count">{groups.ok.length}</div>
         <div className="summary-label">OK</div>
-      </div>
+      </button>
     </div>
   )
 }

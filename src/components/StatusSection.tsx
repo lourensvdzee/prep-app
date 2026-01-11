@@ -20,7 +20,7 @@ export function StatusSection({ status, items, onItemClick }: StatusSectionProps
   const config = statusConfig[status]
 
   return (
-    <div className="status-section">
+    <div className="status-section" id={`section-${status}`}>
       <div className="status-header">
         <span className={`status-indicator ${status}`}></span>
         <span className="status-title">{config.title}</span>

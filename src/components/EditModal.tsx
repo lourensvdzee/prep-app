@@ -207,11 +207,8 @@ export function EditModal({ item, isNew = false, existingShops, onSave, onDelete
             )}
 
             {Object.keys(shops).map(shopName => (
-              <div key={shopName} className="form-group shop-input">
-                <label>
-                  <ShopLogo shop={shopName} size={20} />
-                  <span>{shopName.charAt(0).toUpperCase() + shopName.slice(1)}</span>
-                </label>
+              <div key={shopName} className="form-group shop-input-row">
+                <ShopLogo shop={shopName} size={28} />
                 <input
                   type="text"
                   value={shops[shopName]}

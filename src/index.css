@@ -388,6 +388,22 @@ body {
   border-radius: var(--radius);
   padding: 12px 8px;
   text-align: center;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.15s;
+}
+
+.summary-card:active {
+  transform: scale(0.95);
+}
+
+.summary-card:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.summary-card:disabled:active {
+  transform: none;
 }
 
 .summary-card.ok { background: var(--color-ok-bg); }
@@ -568,6 +584,16 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.shop-input-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shop-input-row input {
+  flex: 1;
 }
 
 .add-shop-row {

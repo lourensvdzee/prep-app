@@ -78,7 +78,12 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
 
           {!isConfigured && (
             <div className="notification-warning">
-              <p>Push notifications are not yet configured. See FIREBASE_SETUP.md for instructions.</p>
+              <p>Push notifications are not yet configured.</p>
+              <p style={{ fontSize: '0.75rem', marginTop: '8px', opacity: 0.7 }}>
+                Debug: API_KEY={import.meta.env.VITE_FIREBASE_API_KEY ? 'set' : 'missing'},
+                PROJECT_ID={import.meta.env.VITE_FIREBASE_PROJECT_ID ? 'set' : 'missing'},
+                VAPID={import.meta.env.VITE_FIREBASE_VAPID_KEY ? 'set' : 'missing'}
+              </p>
             </div>
           )}
 

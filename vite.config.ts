@@ -10,7 +10,7 @@ export default defineConfig({
       includeAssets: ['favicon.jpg', 'apple-touch-icon.jpg', 'icon.svg'],
       manifest: {
         name: 'Prep App',
-        short_name: 'Prep',
+        short_name: 'Prep App',
         description: 'Personal prep inventory tracker',
         theme_color: '#2d3a3a',
         background_color: '#2d3a3a',

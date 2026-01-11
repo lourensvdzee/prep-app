@@ -5,11 +5,19 @@ interface NotificationSettingsProps {
   onClose: () => void
 }
 
+// Check Firebase config at module level (evaluated at build time)
+const firebaseConfigured = !!(
+  import.meta.env.VITE_FIREBASE_API_KEY &&
+  import.meta.env.VITE_FIREBASE_PROJECT_ID &&
+  import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID &&
+  import.meta.env.VITE_FIREBASE_VAPID_KEY
+)
+
 export function NotificationSettings({ onClose }: NotificationSettingsProps) {
   const [permissionStatus, setPermissionStatus] = useState<NotificationPermission | 'unsupported'>('default')
   const [isEnabling, setIsEnabling] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isConfigured, setIsConfigured] = useState(false)
+  const isConfigured = firebaseConfigured
 
   useEffect(() => {
     // Check if notifications are supported
@@ -19,15 +27,6 @@ export function NotificationSettings({ onClose }: NotificationSettingsProps) {
     }
 
     setPermissionStatus(Notification.permission)
-
-    // Check Firebase config directly
-    const apiKey = import.meta.env.VITE_FIREBASE_API_KEY
-    const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID
-    const senderId = import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID
-    const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY
-    const configured = !!(apiKey && projectId && senderId && vapidKey)
-    console.log('Firebase config check:', { apiKey: !!apiKey, projectId: !!projectId, senderId: !!senderId, vapidKey: !!vapidKey, configured })
-    setIsConfigured(configured)
   }, [])
 
   const handleEnableNotifications = async () => {

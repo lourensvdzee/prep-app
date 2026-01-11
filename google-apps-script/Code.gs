@@ -330,11 +330,11 @@ function testGetAll() {
 }
 
 // ============================================
-// PUSH NOTIFICATIONS - Firebase Cloud Messaging
+// PUSH NOTIFICATIONS - Firebase Cloud Messaging v1 API
 // ============================================
 
 const TOKENS_SHEET_NAME = 'FCM_Tokens';
-const NOTIFICATIONS_SHEET_NAME = 'Notifications';
+const FCM_PROJECT_ID = 'prep-app-93f35';
 
 // Get or create the FCM tokens sheet
 function getTokensSheet() {
@@ -379,12 +379,68 @@ function getAllTokens() {
   return tokens;
 }
 
-// Send push notification via Firebase Cloud Messaging
+// Get OAuth2 access token using service account credentials
+function getAccessToken() {
+  const props = PropertiesService.getScriptProperties();
+  const serviceAccountEmail = props.getProperty('FCM_SERVICE_ACCOUNT_EMAIL');
+  const privateKey = props.getProperty('FCM_PRIVATE_KEY');
+
+  if (!serviceAccountEmail || !privateKey) {
+    throw new Error('Service account credentials not configured. Run setupServiceAccountCredentials() first.');
+  }
+
+  // Create JWT for OAuth2
+  const now = Math.floor(Date.now() / 1000);
+  const header = {
+    alg: 'RS256',
+    typ: 'JWT'
+  };
+
+  const claimSet = {
+    iss: serviceAccountEmail,
+    scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600
+  };
+
+  const headerB64 = Utilities.base64EncodeWebSafe(JSON.stringify(header));
+  const claimSetB64 = Utilities.base64EncodeWebSafe(JSON.stringify(claimSet));
+  const signatureInput = headerB64 + '.' + claimSetB64;
+
+  // Sign with private key
+  const signature = Utilities.computeRsaSha256Signature(signatureInput, privateKey);
+  const signatureB64 = Utilities.base64EncodeWebSafe(signature);
+
+  const jwt = signatureInput + '.' + signatureB64;
+
+  // Exchange JWT for access token
+  const tokenResponse = UrlFetchApp.fetch('https://oauth2.googleapis.com/token', {
+    method: 'post',
+    payload: {
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: jwt
+    },
+    muteHttpExceptions: true
+  });
+
+  const tokenData = JSON.parse(tokenResponse.getContentText());
+
+  if (tokenData.error) {
+    throw new Error('OAuth2 error: ' + tokenData.error_description);
+  }
+
+  return tokenData.access_token;
+}
+
+// Send push notification via Firebase Cloud Messaging v1 API
 function sendPushNotification(title, body, data) {
-  const serverKey = PropertiesService.getScriptProperties().getProperty('FCM_SERVER_KEY');
-  if (!serverKey) {
-    Logger.log('FCM_SERVER_KEY not configured');
-    return { success: false, error: 'FCM_SERVER_KEY not configured' };
+  let accessToken;
+  try {
+    accessToken = getAccessToken();
+  } catch (error) {
+    Logger.log('Failed to get access token: ' + error.message);
+    return { success: false, error: error.message };
   }
 
   const tokens = getAllTokens();
@@ -394,37 +450,59 @@ function sendPushNotification(title, body, data) {
   }
 
   const results = [];
+  const fcmUrl = 'https://fcm.googleapis.com/v1/projects/' + FCM_PROJECT_ID + '/messages:send';
 
   for (const token of tokens) {
-    const payload = {
-      to: token,
-      notification: {
-        title: title,
-        body: body,
-        icon: '/apple-touch-icon.jpg',
-        click_action: '/'
-      },
-      data: data || {}
+    const message = {
+      message: {
+        token: token,
+        notification: {
+          title: title,
+          body: body
+        },
+        webpush: {
+          fcm_options: {
+            link: '/'
+          },
+          notification: {
+            icon: '/apple-touch-icon.jpg',
+            badge: '/apple-touch-icon.jpg'
+          }
+        },
+        data: data || {}
+      }
     };
 
     const options = {
       method: 'post',
       contentType: 'application/json',
       headers: {
-        'Authorization': 'key=' + serverKey
+        'Authorization': 'Bearer ' + accessToken
       },
-      payload: JSON.stringify(payload),
+      payload: JSON.stringify(message),
       muteHttpExceptions: true
     };
 
     try {
-      const response = UrlFetchApp.fetch('https://fcm.googleapis.com/fcm/send', options);
-      const result = JSON.parse(response.getContentText());
-      results.push({ token: token.substring(0, 20) + '...', result: result });
+      const response = UrlFetchApp.fetch(fcmUrl, options);
+      const responseCode = response.getResponseCode();
+      const responseText = response.getContentText();
 
-      // Remove invalid tokens
-      if (result.failure === 1 && result.results && result.results[0].error === 'NotRegistered') {
-        removeToken(token);
+      if (responseCode === 200) {
+        results.push({ token: token.substring(0, 20) + '...', success: true });
+      } else {
+        const errorData = JSON.parse(responseText);
+        results.push({ token: token.substring(0, 20) + '...', error: errorData.error?.message || 'Unknown error' });
+
+        // Remove invalid tokens (UNREGISTERED or NOT_FOUND)
+        if (errorData.error?.details) {
+          for (const detail of errorData.error.details) {
+            if (detail.errorCode === 'UNREGISTERED' || detail.errorCode === 'NOT_FOUND') {
+              removeToken(token);
+              break;
+            }
+          }
+        }
       }
     } catch (error) {
       Logger.log('Error sending notification: ' + error.message);
@@ -543,6 +621,42 @@ function createDailyNotificationTrigger() {
   return { success: true, message: 'Daily notification trigger created for 8:00 AM' };
 }
 
+// ============================================
+// SETUP FUNCTIONS - Run these once to configure
+// ============================================
+
+/**
+ * Store service account credentials in Script Properties.
+ *
+ * INSTRUCTIONS:
+ * 1. Go to Google Cloud Console: https://console.cloud.google.com
+ * 2. Select your project "prep-app-93f35"
+ * 3. Go to IAM & Admin > Service Accounts
+ * 4. Click "Create Service Account"
+ *    - Name: "fcm-sender"
+ *    - Click "Create and Continue"
+ *    - Add role: "Firebase Cloud Messaging API Admin"
+ *    - Click "Done"
+ * 5. Click on the created service account
+ * 6. Go to "Keys" tab > Add Key > Create new key > JSON
+ * 7. Download the JSON file
+ * 8. Open the JSON file and copy the values below
+ * 9. Replace the placeholder values and run this function ONCE
+ */
+function setupServiceAccountCredentials() {
+  const props = PropertiesService.getScriptProperties();
+
+  // Replace these with values from your downloaded JSON key file
+  const serviceAccountEmail = 'YOUR_SERVICE_ACCOUNT_EMAIL@prep-app-93f35.iam.gserviceaccount.com';
+  const privateKey = '-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY_HERE\n-----END PRIVATE KEY-----\n';
+
+  props.setProperty('FCM_SERVICE_ACCOUNT_EMAIL', serviceAccountEmail);
+  props.setProperty('FCM_PRIVATE_KEY', privateKey);
+
+  Logger.log('Service account credentials saved!');
+  return { success: true, message: 'Credentials saved' };
+}
+
 // Test function to manually send a test notification
 function testPushNotification() {
   const result = sendPushNotification(
@@ -559,4 +673,20 @@ function testCheckNotifications() {
   const result = checkAndSendNotifications();
   Logger.log(JSON.stringify(result, null, 2));
   return result;
+}
+
+// Verify service account credentials are configured
+function verifyCredentials() {
+  const props = PropertiesService.getScriptProperties();
+  const email = props.getProperty('FCM_SERVICE_ACCOUNT_EMAIL');
+  const key = props.getProperty('FCM_PRIVATE_KEY');
+
+  Logger.log('Service Account Email: ' + (email ? email : 'NOT SET'));
+  Logger.log('Private Key: ' + (key ? 'SET (' + key.length + ' chars)' : 'NOT SET'));
+
+  return {
+    emailConfigured: !!email,
+    keyConfigured: !!key,
+    email: email || null
+  };
 }

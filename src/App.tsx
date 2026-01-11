@@ -1,13 +1,15 @@
-import { useEffect, useState, useCallback } from 'react'
-import { fetchInventory, getCacheTimestamp } from './api'
-import { enrichItemsWithStatus, groupByStatus } from './utils'
+import { useEffect, useState, useCallback, useMemo } from 'react'
+import { fetchInventory, getCacheTimestamp, updateItem, addItem, deleteItem } from './api'
+import { enrichItemsWithStatus, groupByStatus, filterItems } from './utils'
 import { StatusSection } from './components/StatusSection'
 import { Summary } from './components/Summary'
-import type { InventoryItemWithStatus, ItemStatus } from './types'
+import { EditModal } from './components/EditModal'
+import type { InventoryItemWithStatus, ItemStatus, InventoryItem } from './types'
 
 function App() {
   const [items, setItems] = useState<InventoryItemWithStatus[]>([])
   const [groups, setGroups] = useState<Record<ItemStatus, InventoryItemWithStatus[]>>({
+    inuse: [],
     expired: [],
     expiring: [],
     ok: []
@@ -16,6 +18,10 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [editingItem, setEditingItem] = useState<InventoryItemWithStatus | null>(null)
+  const [isAddingNew, setIsAddingNew] = useState(false)
+  const [shopColumns, setShopColumns] = useState<string[]>(['edeka', 'denns', 'rewe'])
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -35,8 +41,18 @@ function App() {
       setGroups(grouped)
       setLastUpdated(response.lastUpdated)
 
+      // Extract shop columns from items
+      if (response.items.length > 0) {
+        const shops = new Set<string>()
+        response.items.forEach(item => {
+          Object.keys(item.shops).forEach(shop => shops.add(shop))
+        })
+        if (shops.size > 0) {
+          setShopColumns(Array.from(shops))
+        }
+      }
+
       if (response.error) {
-        // Partial error (showing cached data)
         setError(response.error)
       }
     } catch (err) {
@@ -49,7 +65,6 @@ function App() {
   useEffect(() => {
     loadData()
 
-    // Listen for online/offline events
     const handleOnline = () => {
       setIsOffline(false)
       loadData()
@@ -65,6 +80,14 @@ function App() {
     }
   }, [loadData])
 
+  // Filter items based on search
+  const filteredGroups = useMemo(() => {
+    if (!searchQuery.trim()) return groups
+
+    const filtered = filterItems(items, searchQuery)
+    return groupByStatus(filtered)
+  }, [items, groups, searchQuery])
+
   const formatLastUpdated = () => {
     const timestamp = lastUpdated || getCacheTimestamp()
     if (!timestamp) return null
@@ -78,10 +101,53 @@ function App() {
     })
   }
 
+  const handleItemClick = (item: InventoryItemWithStatus) => {
+    setEditingItem(item)
+    setIsAddingNew(false)
+  }
+
+  const handleAddNew = () => {
+    setEditingItem(null)
+    setIsAddingNew(true)
+  }
+
+  const handleSave = async (itemData: Partial<InventoryItem>, isNew: boolean) => {
+    try {
+      if (isNew) {
+        await addItem(itemData)
+      } else if (itemData.rowIndex) {
+        await updateItem(itemData.rowIndex, itemData)
+      }
+      setEditingItem(null)
+      setIsAddingNew(false)
+      loadData()
+    } catch (err) {
+      alert('Failed to save: ' + (err instanceof Error ? err.message : 'Unknown error'))
+    }
+  }
+
+  const handleDelete = async (rowIndex: number) => {
+    try {
+      await deleteItem(rowIndex)
+      setEditingItem(null)
+      loadData()
+    } catch (err) {
+      alert('Failed to delete: ' + (err instanceof Error ? err.message : 'Unknown error'))
+    }
+  }
+
+  const handleCloseModal = () => {
+    setEditingItem(null)
+    setIsAddingNew(false)
+  }
+
+  const totalFiltered = filteredGroups.inuse.length + filteredGroups.expired.length +
+    filteredGroups.expiring.length + filteredGroups.ok.length
+
   return (
     <div className="app">
       <header className="header">
-        <h1>Prep Inventory</h1>
+        <h1>Prep App</h1>
         <div className="header-meta">
           <span>{items.length} items</span>
           {formatLastUpdated() && (
@@ -93,10 +159,27 @@ function App() {
             onClick={loadData}
             disabled={loading}
           >
-            {loading ? '...' : '↻'} Refresh
+            {loading ? '...' : '↻'}
           </button>
         </div>
       </header>
+
+      <div className="search-bar">
+        <input
+          type="text"
+          placeholder="Search items..."
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          className="search-input"
+        />
+        {searchQuery && (
+          <button className="search-clear" onClick={() => setSearchQuery('')}>×</button>
+        )}
+      </div>
+
+      <button className="add-btn" onClick={handleAddNew}>
+        + Add Item
+      </button>
 
       {loading && items.length === 0 && (
         <div className="loading">
@@ -114,18 +197,37 @@ function App() {
 
       {items.length > 0 && (
         <>
-          <Summary groups={groups} />
+          <Summary groups={filteredGroups} />
 
-          <StatusSection status="expired" items={groups.expired} />
-          <StatusSection status="expiring" items={groups.expiring} />
-          <StatusSection status="ok" items={groups.ok} />
+          {searchQuery && totalFiltered === 0 && (
+            <div className="empty">
+              <p>No items match "{searchQuery}"</p>
+            </div>
+          )}
+
+          <StatusSection status="inuse" items={filteredGroups.inuse} onItemClick={handleItemClick} />
+          <StatusSection status="expired" items={filteredGroups.expired} onItemClick={handleItemClick} />
+          <StatusSection status="expiring" items={filteredGroups.expiring} onItemClick={handleItemClick} />
+          <StatusSection status="ok" items={filteredGroups.ok} onItemClick={handleItemClick} />
         </>
       )}
 
       {!loading && items.length === 0 && !error && (
         <div className="empty">
           <p>No items in inventory</p>
+          <button className="btn btn-primary" onClick={handleAddNew}>Add your first item</button>
         </div>
+      )}
+
+      {(editingItem || isAddingNew) && (
+        <EditModal
+          item={editingItem}
+          isNew={isAddingNew}
+          existingShops={shopColumns}
+          onSave={handleSave}
+          onDelete={handleDelete}
+          onClose={handleCloseModal}
+        />
       )}
     </div>
   )

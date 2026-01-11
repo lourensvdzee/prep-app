@@ -1,7 +1,7 @@
 import type { InventoryItem, InventoryItemWithStatus, ItemStatus } from './types'
 
 /**
- * Parse a date string in DD.MM.YYYY or DD/MM/YYYY format
+ * Parse a date string - handles multiple formats including Date objects as strings
  */
 export function parseDate(dateStr: string): Date | null {
   if (!dateStr || typeof dateStr !== 'string') {
@@ -31,6 +31,13 @@ export function parseDate(dateStr: string): Date | null {
     return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
   }
 
+  // Try to parse full date strings like "Sun Jan 05 2025 00:00:00 GMT+0100"
+  // or ISO strings with time
+  const parsed = new Date(trimmed)
+  if (!isNaN(parsed.getTime())) {
+    return parsed
+  }
+
   return null
 }
 
@@ -54,12 +61,14 @@ export function daysUntil(date: Date | null): number | null {
 }
 
 /**
- * Determine item status based on dates
- * - expired: past expiration date
- * - expiring: alert date reached but not expired
- * - ok: before alert date (or no dates set)
+ * Determine item status based on dates and inUse flag
  */
 export function getItemStatus(item: InventoryItem): ItemStatus {
+  // If item is marked as in use, show it in the "in use" section
+  if (item.inUse) {
+    return 'inuse'
+  }
+
   const expirationDate = parseDate(item.expirationDate)
   const alertDate = parseDate(item.alertDate)
 
@@ -99,6 +108,7 @@ export function enrichItemsWithStatus(items: InventoryItem[]): InventoryItemWith
  */
 export function groupByStatus(items: InventoryItemWithStatus[]): Record<ItemStatus, InventoryItemWithStatus[]> {
   const groups: Record<ItemStatus, InventoryItemWithStatus[]> = {
+    inuse: [],
     expired: [],
     expiring: [],
     ok: []
@@ -109,7 +119,7 @@ export function groupByStatus(items: InventoryItemWithStatus[]): Record<ItemStat
   }
 
   // Sort each group by days until expiration (soonest first)
-  for (const status of ['expired', 'expiring', 'ok'] as ItemStatus[]) {
+  for (const status of ['inuse', 'expired', 'expiring', 'ok'] as ItemStatus[]) {
     groups[status].sort((a, b) => {
       if (a.daysUntilExpiration === null) return 1
       if (b.daysUntilExpiration === null) return -1
@@ -121,16 +131,43 @@ export function groupByStatus(items: InventoryItemWithStatus[]): Record<ItemStat
 }
 
 /**
- * Format date for display
+ * Format date for display - always returns DD.MM.YYYY
  */
 export function formatDateDisplay(dateStr: string): string {
+  if (!dateStr) return '—'
+
   const date = parseDate(dateStr)
-  if (!date) return dateStr || '—'
+  if (!date) return '—'
 
   const day = String(date.getDate()).padStart(2, '0')
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const year = date.getFullYear()
 
+  return `${day}.${month}.${year}`
+}
+
+/**
+ * Format date for input fields (YYYY-MM-DD)
+ */
+export function formatDateForInput(dateStr: string): string {
+  if (!dateStr) return ''
+
+  const date = parseDate(dateStr)
+  if (!date) return ''
+
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const year = date.getFullYear()
+
+  return `${year}-${month}-${day}`
+}
+
+/**
+ * Convert input date (YYYY-MM-DD) to display format (DD.MM.YYYY)
+ */
+export function inputDateToDisplay(inputDate: string): string {
+  if (!inputDate) return ''
+  const [year, month, day] = inputDate.split('-')
   return `${day}.${month}.${year}`
 }
 
@@ -145,4 +182,35 @@ export function formatRelativeTime(days: number | null): string {
   if (days === -1) return 'yesterday'
   if (days > 0) return `in ${days} days`
   return `${Math.abs(days)} days ago`
+}
+
+/**
+ * Calculate alert date from expiration date and alert window
+ */
+export function calculateAlertDate(expirationDate: string, daysBeforeExpiration: number): string {
+  const expDate = parseDate(expirationDate)
+  if (!expDate) return ''
+
+  const alertDate = new Date(expDate)
+  alertDate.setDate(alertDate.getDate() - daysBeforeExpiration)
+
+  const day = String(alertDate.getDate()).padStart(2, '0')
+  const month = String(alertDate.getMonth() + 1).padStart(2, '0')
+  const year = alertDate.getFullYear()
+
+  return `${day}.${month}.${year}`
+}
+
+/**
+ * Filter items by search query
+ */
+export function filterItems(items: InventoryItemWithStatus[], query: string): InventoryItemWithStatus[] {
+  if (!query.trim()) return items
+
+  const lowerQuery = query.toLowerCase().trim()
+  return items.filter(item =>
+    item.name.toLowerCase().includes(lowerQuery) ||
+    item.amount.toLowerCase().includes(lowerQuery) ||
+    Object.values(item.shops).some(shop => shop.toLowerCase().includes(lowerQuery))
+  )
 }

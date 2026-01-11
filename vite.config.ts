@@ -9,7 +9,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.svg'],
       manifest: {
-        name: 'Prep Inventory',
+        name: 'Prep App',
         short_name: 'Prep',
         description: 'Personal prep inventory tracker',
         theme_color: '#1a1a2e',

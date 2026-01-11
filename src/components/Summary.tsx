@@ -7,6 +7,10 @@ interface SummaryProps {
 export function Summary({ groups }: SummaryProps) {
   return (
     <div className="summary">
+      <div className="summary-card inuse">
+        <div className="summary-count">{groups.inuse.length}</div>
+        <div className="summary-label">In Use</div>
+      </div>
       <div className="summary-card expired">
         <div className="summary-count">{groups.expired.length}</div>
         <div className="summary-label">Expired</div>

@@ -4,15 +4,17 @@ import { ItemCard } from './ItemCard'
 interface StatusSectionProps {
   status: ItemStatus
   items: InventoryItemWithStatus[]
+  onItemClick: (item: InventoryItemWithStatus) => void
 }
 
-const statusConfig: Record<ItemStatus, { emoji: string; title: string }> = {
-  expired: { emoji: '🔴', title: 'Expired' },
-  expiring: { emoji: '🟠', title: 'Expiring Soon' },
-  ok: { emoji: '🟢', title: 'OK' }
+const statusConfig: Record<ItemStatus, { title: string }> = {
+  inuse: { title: 'In Use' },
+  expired: { title: 'Expired' },
+  expiring: { title: 'Expiring Soon' },
+  ok: { title: 'OK' }
 }
 
-export function StatusSection({ status, items }: StatusSectionProps) {
+export function StatusSection({ status, items, onItemClick }: StatusSectionProps) {
   if (items.length === 0) return null
 
   const config = statusConfig[status]
@@ -26,7 +28,11 @@ export function StatusSection({ status, items }: StatusSectionProps) {
       </div>
 
       {items.map((item) => (
-        <ItemCard key={`${item.rowIndex}-${item.name}`} item={item} />
+        <ItemCard
+          key={`${item.rowIndex}-${item.name}`}
+          item={item}
+          onClick={() => onItemClick(item)}
+        />
       ))}
     </div>
   )

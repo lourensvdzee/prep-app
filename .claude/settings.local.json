@@ -14,7 +14,8 @@
       "Bash(vercel login:*)",
       "Bash(npm run dev:*)",
       "Bash(timeout:*)",
-      "Bash(ping:*)"
+      "Bash(ping:*)",
+      "Bash(ls:*)"
     ]
   }
 }

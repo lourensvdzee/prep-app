@@ -16,26 +16,51 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Handle background messages
-messaging.onBackgroundMessage((payload) => {
-  console.log('Received background message:', payload);
+// Standard Push API event listener (required for iOS Safari)
+self.addEventListener('push', (event) => {
+  console.log('Push event received:', event);
 
-  const notificationTitle = payload.notification?.title || 'Prep App';
-  const notificationOptions = {
-    body: payload.notification?.body || 'You have items expiring soon!',
+  let data = {};
+  let title = 'Prep App';
+  let body = 'You have items expiring soon!';
+
+  if (event.data) {
+    try {
+      data = event.data.json();
+      console.log('Push data:', data);
+
+      // FCM sends notification data in different formats
+      if (data.notification) {
+        title = data.notification.title || title;
+        body = data.notification.body || body;
+      } else if (data.title) {
+        title = data.title;
+        body = data.body || body;
+      }
+    } catch (e) {
+      console.log('Push data text:', event.data.text());
+    }
+  }
+
+  const options = {
+    body: body,
     icon: '/apple-touch-icon.jpg',
     badge: '/apple-touch-icon.jpg',
-    tag: payload.data?.itemId || 'prep-notification',
-    data: payload.data,
-    actions: [
-      {
-        action: 'open',
-        title: 'View Item'
-      }
-    ]
+    tag: data.data?.itemId || 'prep-notification',
+    data: data.data || {},
+    requireInteraction: true
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+  );
+});
+
+// Also keep Firebase onBackgroundMessage for Android/Desktop Chrome
+messaging.onBackgroundMessage((payload) => {
+  console.log('Received background message:', payload);
+  // Note: On iOS, the push event above handles this
+  // This is mainly for Android/Desktop browsers
 });
 
 // Handle notification click

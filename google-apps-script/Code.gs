@@ -621,6 +621,47 @@ function createDailyNotificationTrigger() {
   return { success: true, message: 'Daily notification trigger created for 8:00 AM' };
 }
 
+// Create a trigger for a specific hour (for testing)
+function createTestTrigger(hour) {
+  // Delete existing triggers for this function
+  const triggers = ScriptApp.getProjectTriggers();
+  for (const trigger of triggers) {
+    if (trigger.getHandlerFunction() === 'checkAndSendNotifications') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  }
+
+  // Create trigger at specified hour
+  ScriptApp.newTrigger('checkAndSendNotifications')
+    .timeBased()
+    .atHour(hour)
+    .everyDays(1)
+    .create();
+
+  return { success: true, message: 'Trigger created for ' + hour + ':00' };
+}
+
+// Quick test trigger for 10:30 - run this function!
+function createTriggerFor1030() {
+  // Delete existing triggers
+  const triggers = ScriptApp.getProjectTriggers();
+  for (const trigger of triggers) {
+    if (trigger.getHandlerFunction() === 'checkAndSendNotifications') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  }
+
+  // Create trigger at 10 AM (will run between 10:00-11:00)
+  ScriptApp.newTrigger('checkAndSendNotifications')
+    .timeBased()
+    .atHour(10)
+    .everyDays(1)
+    .create();
+
+  Logger.log('Trigger created for 10:00 AM (runs between 10:00-11:00)');
+  return { success: true, message: 'Trigger created for 10:00 AM' };
+}
+
 // ============================================
 // SETUP FUNCTIONS - Run these once to configure
 // ============================================

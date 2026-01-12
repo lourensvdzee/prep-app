@@ -7,6 +7,7 @@ import { EditModal } from './components/EditModal'
 import { Toast } from './components/Toast'
 import { LoadingOverlay } from './components/LoadingOverlay'
 import { NotificationSettings } from './components/NotificationSettings'
+import { DebugLog, addDebugLog } from './components/DebugLog'
 import { hasPendingChanges, syncPendingChanges } from './syncService'
 import type { InventoryItemWithStatus, ItemStatus, InventoryItem } from './types'
 
@@ -32,7 +33,34 @@ function App() {
   const [toast, setToast] = useState<string | null>(null)
   const [isAtTop, setIsAtTop] = useState(true)
   const [showNotificationSettings, setShowNotificationSettings] = useState(false)
+  const [showDebugLog, setShowDebugLog] = useState(false)
   const scrollTimeoutRef = useRef<number | null>(null)
+
+  // Listen for debug messages from service worker
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'DEBUG_LOG') {
+        addDebugLog(event.data.message)
+      }
+    }
+
+    navigator.serviceWorker?.addEventListener('message', handleMessage)
+    addDebugLog('App: Started listening for SW messages')
+
+    // Log service worker status
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(reg => {
+        addDebugLog('App: Service Worker ready, scope: ' + reg.scope)
+        addDebugLog('App: SW state: ' + reg.active?.state)
+      }).catch(err => {
+        addDebugLog('App: SW ready error: ' + err.message)
+      })
+    }
+
+    return () => {
+      navigator.serviceWorker?.removeEventListener('message', handleMessage)
+    }
+  }, [])
 
   // Track scroll position to show/hide up button
   useEffect(() => {
@@ -237,6 +265,13 @@ function App() {
             )}
             <button
               className="settings-btn"
+              onClick={() => setShowDebugLog(true)}
+              aria-label="Debug log"
+            >
+              🐛
+            </button>
+            <button
+              className="settings-btn"
               onClick={() => setShowNotificationSettings(true)}
               aria-label="Notification settings"
             >
@@ -329,6 +364,10 @@ function App() {
 
       {showNotificationSettings && (
         <NotificationSettings onClose={() => setShowNotificationSettings(false)} />
+      )}
+
+      {showDebugLog && (
+        <DebugLog onClose={() => setShowDebugLog(false)} />
       )}
     </div>
   )

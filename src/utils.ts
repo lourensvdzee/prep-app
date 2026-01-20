@@ -2,7 +2,7 @@ import type { InventoryItem, InventoryItemWithStatus, ItemStatus } from './types
 
 /**
  * Fix January dates that were incorrectly interpreted.
- * When day looks like a month (e.g., 05.01.2027 meant May 2027, not Jan 5th),
+ * When day looks like a month (e.g., 05.01.2027 or 05/01/2027 meant May 2027, not Jan 5th),
  * swap day and month, setting day to 1st of that month.
  * Only applies to January dates where day > 0 and day <= 12.
  */
@@ -13,8 +13,8 @@ function fixJanuaryDate(dateStr: string): string {
 
   const trimmed = dateStr.trim()
 
-  // Match DD.MM.YYYY format
-  const match = trimmed.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)
+  // Match DD.MM.YYYY or DD/MM/YYYY format
+  const match = trimmed.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/)
   if (match) {
     const day = parseInt(match[1])
     const month = parseInt(match[2])
@@ -24,6 +24,7 @@ function fixJanuaryDate(dateStr: string): string {
       // Swap: day becomes the new month, set day to 1
       const newDay = '01'
       const newMonth = String(day).padStart(2, '0')
+      // Return in DD.MM.YYYY format (normalized)
       return `${newDay}.${newMonth}.${match[3]}`
     }
   }

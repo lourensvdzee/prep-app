@@ -27,26 +27,26 @@ export function ItemCard({ item, onClick }: ItemCardProps) {
       <div className="item-amount">{item.amount}</div>
 
       <div className="item-dates">
-        <div className="item-date">
-          <span className="item-date-label">Expires</span>
-          <span className={`item-date-value ${item.status}`}>
-            {formatDateDisplay(item.expirationDate)}
-          </span>
-          {item.daysUntilExpiration !== null && (
-            <span className={`item-relative ${item.status}`}>
-              {formatRelativeTime(item.daysUntilExpiration)}
-            </span>
-          )}
-        </div>
-
         {item.alertDate && (
           <div className="item-date">
             <span className="item-date-label">Alert</span>
-            <span className="item-date-value">
+            <span className={`item-date-value ${item.status}`}>
               {formatDateDisplay(item.alertDate)}
             </span>
+            {item.daysUntilAlert !== null && (
+              <span className={`item-relative ${item.status}`}>
+                {formatRelativeTime(item.daysUntilAlert)}
+              </span>
+            )}
           </div>
         )}
+
+        <div className="item-date">
+          <span className="item-date-label">Expires</span>
+          <span className="item-date-value">
+            {formatDateDisplay(item.expirationDate)}
+          </span>
+        </div>
       </div>
 
       {hasShopInfo && (

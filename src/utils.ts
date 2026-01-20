@@ -1,6 +1,37 @@
 import type { InventoryItem, InventoryItemWithStatus, ItemStatus } from './types'
 
 /**
+ * Fix January dates that were incorrectly interpreted.
+ * When day looks like a month (e.g., 05.01.2027 meant May 2027, not Jan 5th),
+ * swap day and month, setting day to 1st of that month.
+ * Only applies to January dates where day > 0 and day <= 12.
+ */
+function fixJanuaryDate(dateStr: string): string {
+  if (!dateStr || typeof dateStr !== 'string') {
+    return dateStr
+  }
+
+  const trimmed = dateStr.trim()
+
+  // Match DD.MM.YYYY format
+  const match = trimmed.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)
+  if (match) {
+    const day = parseInt(match[1])
+    const month = parseInt(match[2])
+
+    // Only fix January dates (month = 1) where day could be a month (1-12)
+    if (month === 1 && day >= 1 && day <= 12) {
+      // Swap: day becomes the new month, set day to 1
+      const newDay = '01'
+      const newMonth = String(day).padStart(2, '0')
+      return `${newDay}.${newMonth}.${match[3]}`
+    }
+  }
+
+  return dateStr
+}
+
+/**
  * Parse a date string - handles multiple formats including Date objects as strings
  */
 export function parseDate(dateStr: string): Date | null {
@@ -8,7 +39,9 @@ export function parseDate(dateStr: string): Date | null {
     return null
   }
 
-  const trimmed = dateStr.trim()
+  // Apply January date fix before parsing
+  const fixed = fixJanuaryDate(dateStr)
+  const trimmed = fixed.trim()
 
   // Try DD.MM.YYYY format (German)
   let match = trimmed.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)
@@ -95,10 +128,12 @@ export function getItemStatus(item: InventoryItem): ItemStatus {
 export function enrichItemsWithStatus(items: InventoryItem[]): InventoryItemWithStatus[] {
   return items.map(item => {
     const expirationDate = parseDate(item.expirationDate)
+    const alertDate = parseDate(item.alertDate)
     return {
       ...item,
       status: getItemStatus(item),
-      daysUntilExpiration: daysUntil(expirationDate)
+      daysUntilExpiration: daysUntil(expirationDate),
+      daysUntilAlert: daysUntil(alertDate)
     }
   })
 }
@@ -118,12 +153,12 @@ export function groupByStatus(items: InventoryItemWithStatus[]): Record<ItemStat
     groups[item.status].push(item)
   }
 
-  // Sort each group by days until expiration (soonest first)
+  // Sort each group by days until alert (soonest first)
   for (const status of ['inuse', 'expired', 'expiring', 'ok'] as ItemStatus[]) {
     groups[status].sort((a, b) => {
-      if (a.daysUntilExpiration === null) return 1
-      if (b.daysUntilExpiration === null) return -1
-      return a.daysUntilExpiration - b.daysUntilExpiration
+      if (a.daysUntilAlert === null) return 1
+      if (b.daysUntilAlert === null) return -1
+      return a.daysUntilAlert - b.daysUntilAlert
     })
   }
 

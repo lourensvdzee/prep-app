@@ -13,6 +13,7 @@ export type ItemStatus = 'ok' | 'expiring' | 'expired' | 'inuse'
 export interface InventoryItemWithStatus extends InventoryItem {
   status: ItemStatus
   daysUntilExpiration: number | null
+  daysUntilAlert: number | null
 }
 
 export interface ApiResponse {

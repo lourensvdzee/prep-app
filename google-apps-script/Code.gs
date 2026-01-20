@@ -732,3 +732,126 @@ function verifyCredentials() {
     email: email || null
   };
 }
+
+// List all registered tokens with their metadata
+function listAllTokens() {
+  const sheet = getTokensSheet();
+  const data = sheet.getDataRange().getValues();
+  const tokens = [];
+
+  Logger.log('=== Registered FCM Tokens ===');
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0]) {
+      const tokenInfo = {
+        row: i + 1,
+        tokenPreview: data[i][0].substring(0, 30) + '...',
+        fullToken: data[i][0],
+        createdAt: data[i][1],
+        lastUsed: data[i][2]
+      };
+      tokens.push(tokenInfo);
+      Logger.log('Row ' + (i + 1) + ': ' + tokenInfo.tokenPreview);
+      Logger.log('  Created: ' + tokenInfo.createdAt);
+      Logger.log('  Last Used: ' + tokenInfo.lastUsed);
+    }
+  }
+
+  Logger.log('Total tokens: ' + tokens.length);
+  return tokens;
+}
+
+// Clear all tokens (useful for fresh start)
+function clearAllTokens() {
+  const sheet = getTokensSheet();
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow > 1) {
+    // Delete all rows except header
+    sheet.deleteRows(2, lastRow - 1);
+    Logger.log('Cleared ' + (lastRow - 1) + ' tokens');
+    return { success: true, message: 'Cleared ' + (lastRow - 1) + ' tokens' };
+  }
+
+  return { success: true, message: 'No tokens to clear' };
+}
+
+// Send a test notification with detailed logging
+function testPushWithDetailedLogging() {
+  Logger.log('=== Starting Detailed Push Test ===');
+  Logger.log('Timestamp: ' + new Date().toISOString());
+
+  // Get access token
+  let accessToken;
+  try {
+    accessToken = getAccessToken();
+    Logger.log('✓ Access token obtained');
+  } catch (error) {
+    Logger.log('✗ Failed to get access token: ' + error.message);
+    return { success: false, error: error.message };
+  }
+
+  const tokens = getAllTokens();
+  Logger.log('Total tokens to send to: ' + tokens.length);
+
+  const fcmUrl = 'https://fcm.googleapis.com/v1/projects/' + FCM_PROJECT_ID + '/messages:send';
+  const results = [];
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    Logger.log('\n--- Token ' + (i + 1) + ' ---');
+    Logger.log('Token preview: ' + token.substring(0, 40) + '...');
+
+    const message = {
+      message: {
+        token: token,
+        notification: {
+          title: 'Debug Test ' + new Date().toLocaleTimeString(),
+          body: 'Testing token ' + (i + 1) + ' of ' + tokens.length
+        },
+        webpush: {
+          fcm_options: {
+            link: '/'
+          }
+        },
+        data: { test: 'true', tokenIndex: String(i + 1) }
+      }
+    };
+
+    try {
+      const response = UrlFetchApp.fetch(fcmUrl, {
+        method: 'post',
+        contentType: 'application/json',
+        headers: { 'Authorization': 'Bearer ' + accessToken },
+        payload: JSON.stringify(message),
+        muteHttpExceptions: true
+      });
+
+      const code = response.getResponseCode();
+      const body = response.getContentText();
+
+      Logger.log('Response code: ' + code);
+      Logger.log('Response body: ' + body);
+
+      if (code === 200) {
+        results.push({ index: i + 1, success: true, messageId: JSON.parse(body).name });
+      } else {
+        const errorData = JSON.parse(body);
+        results.push({ index: i + 1, success: false, error: errorData.error?.message });
+
+        // Check for UNREGISTERED error
+        if (body.includes('UNREGISTERED') || body.includes('NOT_FOUND')) {
+          Logger.log('⚠️ Token is invalid/unregistered - should be removed');
+        }
+      }
+    } catch (e) {
+      Logger.log('Exception: ' + e.message);
+      results.push({ index: i + 1, success: false, error: e.message });
+    }
+  }
+
+  Logger.log('\n=== Summary ===');
+  const successful = results.filter(r => r.success).length;
+  Logger.log('Successful: ' + successful + '/' + tokens.length);
+
+  return { tokens: tokens.length, successful: successful, results: results };
+}
